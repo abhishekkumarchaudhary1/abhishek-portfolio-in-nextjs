@@ -54,10 +54,10 @@ export default function Hero() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-4">
-              Hi, I'm <span className="text-indigo-600">{name}</span>
+              Hi, I&apos;m <span className="text-indigo-600">{name}</span>
             </h1>
             <h2 className="text-2xl sm:text-3xl text-gray-700 mb-6 h-12 flex items-center">
-              I'm a/an{" "}
+              I&apos;m a/an{" "}
               {isMounted ? (
                 <motion.span 
                   className="text-indigo-600 ml-2 inline-block min-w-[150px]"

@@ -19,7 +19,7 @@ export default function Skills() {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">My Skills</h2>
           <div className="w-20 h-1 bg-indigo-600 mx-auto mb-8"></div>
           <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-            I've developed a diverse set of skills throughout my journey as a developer.
+            I&apos;ve developed a diverse set of skills throughout my journey as a developer.
             Here are the technologies and tools I work with.
           </p>
         </motion.div>

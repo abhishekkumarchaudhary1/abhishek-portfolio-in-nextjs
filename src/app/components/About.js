@@ -57,7 +57,7 @@ export default function About() {
               className="text-lg text-gray-700 mb-6"
               variants={fadeInUp}
             >
-              Hello! I'm <span className="font-semibold">{name}</span>, a passionate developer with a keen eye for design and a love for creating intuitive, user-friendly applications.
+              Hello! I&apos;m <span className="font-semibold">{name}</span>, a passionate developer with a keen eye for design and a love for creating intuitive, user-friendly applications.
             </motion.p>
             <motion.p 
               className="text-lg text-gray-700 mb-6"
@@ -69,7 +69,7 @@ export default function About() {
               className="text-lg text-gray-700 mb-8"
               variants={fadeInUp}
             >
-              When I'm not coding, you can find me exploring new technologies, contributing to open-source projects, or enjoying outdoor activities like hiking and photography.
+              When I&apos;m not coding, you can find me exploring new technologies, contributing to open-source projects, or enjoying outdoor activities like hiking and photography.
             </motion.p>
             
             <motion.div 

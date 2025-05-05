@@ -86,7 +86,7 @@ export default function Contact() {
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Contact Me</h2>
           <div className="w-20 h-1 bg-indigo-600 mx-auto mb-8"></div>
           <p className="text-lg text-gray-700 max-w-2xl mx-auto">
-            Feel free to reach out if you're looking for a developer, have a question, or just want to connect.
+            Feel free to reach out if you&apos;re looking for a developer, have a question, or just want to connect.
           </p>
         </motion.div>
 
@@ -316,7 +316,7 @@ export default function Contact() {
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                     >
-                      Your message has been sent successfully! I'll get back to you as soon as possible.
+                      Your message has been sent successfully! I&apos;ll get back to you as soon as possible.
                     </motion.div>
                   )}
                 </AnimatePresence>
