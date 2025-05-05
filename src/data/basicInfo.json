@@ -1,0 +1,117 @@
+{
+  "personalInfo": {
+    "name": "Abhishek Kumar Chaudhary",
+    "title": "Full Stack Developer",
+    "email": "abhishek.chaudhary33@gmail.com",
+    "phone": "+91 9973964367",
+    "location": "New Delhi, India",
+    "bio": "Creating elegant solutions to complex problems through code and design. Let's build something amazing together.",
+    "github": "https://github.com/abhishekkumarchaudhary1",
+    "linkedin": "https://www.linkedin.com/in/abhishek-kumar-chaudhary-516431164",
+    "profileImage": "/profile-image.jpg"
+  },
+  "education": [
+    {
+      "degree": "Master in Computer Applications",
+      "school": "AKTU, Lucknow",
+      "years": "2021-2023"
+    },
+    {
+      "degree": "Bachelor in Computer Applications",
+      "school": "CCS University, Meerut",
+      "years": "2017-2020"
+    }
+  ],
+  "experience": [
+    {
+      "title": "Software Developer",
+      "company": "IISERVZ",
+      "years": "Sept 2024 - Present",
+      "description": "Developing and maintaining web applications using React, Next.js, .NET, and SQL Server."
+    }
+  ],
+  "skills": {
+    "categories": [
+      {
+        "title": "Frontend Development",
+        "skills": [
+          { "name": "HTML5", "level": 90 },
+          { "name": "CSS3/SASS", "level": 85 },
+          { "name": "JavaScript (ES6+)", "level": 90 },
+          { "name": "React.js", "level": 85 },
+          { "name": "Next.js", "level": 80 },
+          { "name": "Tailwind CSS", "level": 85 },
+          { "name": "Responsive Design", "level": 90 }
+        ]
+      },
+      {
+        "title": "Backend Development",
+        "skills": [
+          { "name": "Node.js", "level": 80 },
+          { "name": ".NET", "level": 82 },
+          { "name": "Express.js", "level": 75 },
+          { "name": "RESTful APIs", "level": 85 },
+          { "name": "MongoDB", "level": 70 },
+          { "name": "SQL", "level": 65 },
+          { "name": "Firebase", "level": 75 }
+        ]
+      },
+      {
+        "title": "Tools & Technologies",
+        "skills": [
+          { "name": "Git/GitHub", "level": 85 },
+          { "name": "Postman", "level": 65 },
+          { "name": "VS Code", "level": 90 }
+        ]
+      }
+    ],
+    "otherSkills": [
+      "UI/UX Design", "Responsive Design", "Performance Optimization", 
+      "Accessibility", "SEO", "Progressive Web Apps", "TypeScript",
+      "Web Animation", "Cross-Browser Compatibility", "Mobile Development", "C#"
+    ]
+  },
+  "projects": [
+    {
+      "id": 1,
+      "title": "Personal Portfolio Website",
+      "description": "A modern, responsive portfolio website built with Next.js and Tailwind CSS, featuring smooth animations and a contact form with email functionality.",
+      "image": "/portfolio.png",
+      "technologies": ["Next.js", "React", "Tailwind CSS", "Framer Motion", "Nodemailer"],
+      "category": "frontend",
+      "link": "#",
+      "sourceCode": "#"
+    },
+    {
+      "id": 2,
+      "title": "IISERVZ Website",
+      "description": "Built my firm's official website from scratch using Next.js for a fast, SEO friendly frontend.",
+      "image": "/iiservz.png",
+      "technologies": ["Next.js", "React", "Tailwind CSS", "SEO Optimization"],
+      "category": "frontend",
+      "link": "#",
+      "sourceCode": "#"
+    },
+    {
+      "id": 3,
+      "title": "HR2Grow Attendance API",
+      "description": "Designed and implemented an API structure in .NET 9 with MS SQL to fetch employee attendance using client IDs.",
+      "image": "/hr2grow.png",
+      "technologies": [".NET 9", "MS SQL", "REST API", "C#"],
+      "category": "backend",
+      "link": "#",
+      "sourceCode": "#"
+    },
+    {
+      "id": 4,
+      "title": "TaskDoc - Document Management App",
+      "description": "Full-stack MERN app with React, Redux Toolkit, Node.js, Express, and MongoDB. Features include document/task management, JWT-based auth, CRUD APIs, and file uploads via Cloudinary.",
+      "image": "/taskdoc.png",
+      "technologies": ["React", "Redux Toolkit", "Node.js", "Express", "MongoDB", "JWT", "Cloudinary"],
+      "category": "fullstack",
+      "link": "#",
+      "sourceCode": "#"
+    }
+  ],
+  "roles": ["Frontend Developer", "Backend Developer", "API Tester", "Problem Solver"]
+} 

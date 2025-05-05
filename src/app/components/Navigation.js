@@ -1,0 +1,141 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import basicInfo from '../../data/basicInfo.json';
+
+export default function Navigation() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+  const { name } = basicInfo.personalInfo;
+
+  // Mark component as mounted
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Handle scroll event to change navbar appearance
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 50) {
+        setIsScrolled(true);
+      } else {
+        setIsScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // Toggle mobile menu
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
+  // Handle navigation click
+  const handleNavClick = (e, id) => {
+    e.preventDefault();
+    setIsMenuOpen(false);
+    
+    const element = document.getElementById(id);
+    if (element) {
+      // Add a small delay to ensure the menu closes before scrolling
+      setTimeout(() => {
+        const offsetTop = element.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo({
+          top: offsetTop,
+          behavior: 'smooth'
+        });
+      }, 10);
+    }
+  };
+
+  return (
+    <header className={`fixed w-full z-50 transition-all duration-300 ${isMounted && isScrolled ? 'bg-white shadow-md py-3' : 'bg-white/80 backdrop-blur-sm py-5'}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav className="flex items-center justify-between">
+          {/* Logo/Name */}
+          <motion.a 
+            href="#home" 
+            className="text-xl font-bold text-gray-900"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            onClick={(e) => handleNavClick(e, 'home')}
+          >
+            {name.split(' ')[0]}
+            <span className="text-indigo-600">.</span>
+          </motion.a>
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex space-x-8">
+            {['home', 'about', 'skills', 'projects', 'contact'].map((item, index) => (
+              <motion.a
+                key={item}
+                href={`#${item}`}
+                className="text-sm font-medium text-gray-800 hover:text-indigo-600 transition-colors"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ y: -3 }}
+                onClick={(e) => handleNavClick(e, item)}
+              >
+                {item.charAt(0).toUpperCase() + item.slice(1)}
+              </motion.a>
+            ))}
+          </div>
+          
+          {/* Mobile Menu Button */}
+          <motion.button
+            className="md:hidden"
+            onClick={toggleMenu}
+            whileTap={{ scale: 0.9 }}
+          >
+            <svg 
+              className="w-6 h-6 text-gray-900" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {isMenuOpen ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </motion.button>
+        </nav>
+        
+        {/* Mobile Menu */}
+        <motion.div 
+          className={`md:hidden ${isMenuOpen ? 'block' : 'hidden'}`}
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ 
+            opacity: isMenuOpen ? 1 : 0, 
+            height: isMenuOpen ? 'auto' : 0 
+          }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="py-3 space-y-2">
+            {['home', 'about', 'skills', 'projects', 'contact'].map((item) => (
+              <a
+                key={item}
+                href={`#${item}`}
+                className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-indigo-50 hover:text-indigo-600"
+                onClick={(e) => handleNavClick(e, item)}
+              >
+                {item.charAt(0).toUpperCase() + item.slice(1)}
+              </a>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+    </header>
+  );
+} 
