@@ -74,16 +74,26 @@
   "projects": [
     {
       "id": 1,
+      "title": "Expense Tracker",
+      "description": "A simple expense tracker app built with React and Tailwind CSS. It allows you to add, edit, and delete expenses, and view the total expenses.",
+      "image": "/expense-tracker.png",
+      "technologies": ["Next.js", "React", "Tailwind CSS", "Framer Motion", "Nodemailer"],
+      "category": "fullstack",
+      "link": "https://expense-tracker-mu-three-13.vercel.app/",
+      "sourceCode": "#"
+    },
+    {
+      "id": 2,
       "title": "Personal Portfolio Website",
       "description": "A modern, responsive portfolio website built with Next.js and Tailwind CSS, featuring smooth animations and a contact form with email functionality.",
       "image": "/portfolio.png",
       "technologies": ["Next.js", "React", "Tailwind CSS", "Framer Motion", "Nodemailer"],
       "category": "frontend",
-      "link": "#",
+      "link": "https://abhishek-portfolio-in-nextjs.vercel.app/",
       "sourceCode": "#"
     },
     {
-      "id": 2,
+      "id": 3,
       "title": "IISERVZ Website",
       "description": "Built my firm's official website from scratch using Next.js for a fast, SEO friendly frontend.",
       "image": "/iiservz.png",
@@ -93,7 +103,7 @@
       "sourceCode": "#"
     },
     {
-      "id": 3,
+      "id": 4,
       "title": "HR2Grow Attendance API",
       "description": "Designed and implemented an API structure in .NET 9 with MS SQL to fetch employee attendance using client IDs.",
       "image": "/hr2grow.png",
@@ -103,7 +113,7 @@
       "sourceCode": "#"
     },
     {
-      "id": 4,
+      "id": 5,
       "title": "TaskDoc - Document Management App",
       "description": "Full-stack MERN app with React, Redux Toolkit, Node.js, Express, and MongoDB. Features include document/task management, JWT-based auth, CRUD APIs, and file uploads via Cloudinary.",
       "image": "/taskdoc.png",

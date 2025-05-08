@@ -5,6 +5,10 @@ export async function POST(request) {
   try {
     const { name, email, subject, message } = await request.json();
 
+    // Debug: Log environment variables (remove in production)
+    console.log('Email User:', process.env.EMAIL_USER);
+    console.log('Email Pass exists:', !!process.env.EMAIL_PASS);
+
     // Create a transporter using SMTP
     const transporter = nodemailer.createTransport({
       service: 'gmail',

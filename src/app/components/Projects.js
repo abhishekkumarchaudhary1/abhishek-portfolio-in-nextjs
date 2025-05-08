@@ -116,28 +116,32 @@ export default function Projects() {
                 </div>
 
                 {/* Live Demo and Source Code Section */}
-                {/* <div className="flex space-x-3">
-                  <motion.a 
-                    href={project.link} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-indigo-600 hover:text-indigo-800 font-medium"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Live Demo
-                  </motion.a>
-                  <motion.a 
-                    href={project.sourceCode} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="text-gray-600 hover:text-gray-800 font-medium"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    Source Code
-                  </motion.a>
-                </div> */}
+                <div className="flex space-x-3">
+                  {project.link && project.link !== '#' && (
+                    <motion.a 
+                      href={project.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Live Demo
+                    </motion.a>
+                  )}
+                  {project.sourceCode && project.sourceCode !== '#' && (
+                    <motion.a 
+                      href={project.sourceCode} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="text-gray-600 hover:text-gray-800 font-medium"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      Source Code
+                    </motion.a>
+                  )}
+                </div>
               </div>
             </motion.div>
           ))}
