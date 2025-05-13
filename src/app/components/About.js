@@ -73,11 +73,11 @@ export default function About() {
             </motion.p>
             
             <motion.div 
-              className="grid grid-cols-2 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4"
               variants={fadeInUp}
             >
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Education</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Education</h3>
                 <ul className="space-y-2">
                   {education.map((edu, index) => (
                     <motion.li 
@@ -95,7 +95,7 @@ export default function About() {
                 </ul>
               </div>
               <div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">Experience</h3>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3">Experience</h3>
                 <ul className="space-y-2">
                   {experience.map((exp, index) => (
                     <motion.li 
@@ -116,7 +116,7 @@ export default function About() {
           </motion.div>
           
           <motion.div 
-            className="grid grid-cols-2 gap-6"
+            className="grid grid-cols-1 sm:grid-cols-2 gap-6"
             initial={{ opacity: 0, y: 50 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -125,11 +125,11 @@ export default function About() {
             {categories.map((category, index) => (
               <motion.div 
                 key={index}
-                className={`${bgColors[category.title] || 'bg-gray-50'} p-6 rounded-lg`}
+                className={`${bgColors[category.title] || 'bg-gray-50'} p-4 sm:p-6 rounded-lg`}
                 whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
                 transition={{ duration: 0.3 }}
               >
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 break-words">
                   {category.title}
                 </h3>
                 <ul className="space-y-2 text-gray-700">
@@ -141,11 +141,11 @@ export default function About() {
             ))}
 
             <motion.div 
-              className="bg-pink-50 p-6 rounded-lg"
+              className="bg-pink-50 p-4 sm:p-6 rounded-lg"
               whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.1)" }}
               transition={{ duration: 0.3 }}
             >
-              <h3 className="text-xl font-semibold text-gray-900 mb-3">Other</h3>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-3 break-words">Other</h3>
               <ul className="space-y-2 text-gray-700">
                 {otherSkills.slice(0, 6).map((skill, index) => (
                   <li key={index}>{skill}</li>
