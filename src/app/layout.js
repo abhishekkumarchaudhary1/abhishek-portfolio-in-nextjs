@@ -2,6 +2,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import dynamic from 'next/dynamic';
 import ClientWrapper from './components/ClientWrapper';
+import ToastProvider from './components/ToastProvider';
 
 // Use dynamic imports for components with client-side logic
 const Navigation = dynamic(() => import('./components/Navigation'));
@@ -18,15 +19,17 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" className="scroll-smooth">
       <body className={inter.className} suppressHydrationWarning>
-        <ClientWrapper>
-          <Navigation />
-        </ClientWrapper>
-        <main>
-          {children}
-        </main>
-        <ClientWrapper>
-          <Footer />
-        </ClientWrapper>
+        <ToastProvider>
+          <ClientWrapper>
+            <Navigation />
+          </ClientWrapper>
+          <main>
+            {children}
+          </main>
+          <ClientWrapper>
+            <Footer />
+          </ClientWrapper>
+        </ToastProvider>
       </body>
     </html>
   );

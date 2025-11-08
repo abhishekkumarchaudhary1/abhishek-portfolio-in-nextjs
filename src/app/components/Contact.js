@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { toast } from 'react-toastify';
 import basicInfo from '../../data/basicInfo.json';
 import RazorpayDonation from './RazorpayDonation';
 
@@ -9,11 +10,11 @@ export default function Contact() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     subject: '',
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState(null);
   const { email, phone, location, github, linkedin, buyMeACoffee } = basicInfo.personalInfo;
 
   const handleChange = (e) => {
@@ -43,25 +44,21 @@ export default function Contact() {
         throw new Error(data.error || 'Failed to send message');
       }
 
-      setSubmitStatus('success');
+      toast.success('Your message has been sent successfully! I\'ll get back to you as soon as possible.');
       
       // Reset form after successful submission
       setFormData({
         name: '',
         email: '',
+        phone: '',
         subject: '',
         message: ''
       });
     } catch (error) {
       console.error('Error:', error);
-      setSubmitStatus('error');
+      toast.error(error.message || 'There was an error sending your message. Please try again later.');
     } finally {
       setIsSubmitting(false);
-      
-      // Reset status message after 5 seconds
-      setTimeout(() => {
-        setSubmitStatus(null);
-      }, 5000);
     }
   };
 
@@ -282,6 +279,25 @@ export default function Contact() {
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
+                  transition={{ delay: 0.45 }}
+                >
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-gray-900"
+                  />
+                </motion.div>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ delay: 0.5 }}
                 >
                   <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
@@ -334,32 +350,6 @@ export default function Contact() {
                     {isSubmitting ? 'Sending...' : 'Send Message'}
                   </motion.button>
                 </motion.div>
-                
-                <AnimatePresence>
-                  {submitStatus === 'success' && (
-                    <motion.div 
-                      className="bg-green-50 text-green-800 rounded-md p-3 text-sm"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                    >
-                      Your message has been sent successfully! I&apos;ll get back to you as soon as possible.
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                
-                <AnimatePresence>
-                  {submitStatus === 'error' && (
-                    <motion.div 
-                      className="bg-red-50 text-red-800 rounded-md p-3 text-sm"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                    >
-                      There was an error sending your message. Please try again later.
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </form>
           </motion.div>
