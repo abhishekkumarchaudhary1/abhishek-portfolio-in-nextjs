@@ -198,7 +198,7 @@ export default function RazorpayDonation() {
                           <span className="font-semibold text-yellow-800">Test Mode Active</span>
                         </div>
                         <p className="text-sm text-yellow-700 mb-3">
-                          You're in test mode. Use the <strong>Indian test cards</strong> below to simulate payments. No real money will be charged.
+                          You&apos;re in test mode. Use the <strong>Indian test cards</strong> below to simulate payments. No real money will be charged.
                         </p>
                         <div className="text-xs text-yellow-800 bg-yellow-100 p-2 rounded mb-2">
                           <strong>Note:</strong> This account accepts Indian cards only. Use the Indian test cards listed below.
