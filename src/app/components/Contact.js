@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import basicInfo from '../../data/basicInfo.json';
+import RazorpayDonation from './RazorpayDonation';
 
 export default function Contact() {
   const [formData, setFormData] = useState({
@@ -13,7 +14,7 @@ export default function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
-  const { email, phone, location, github, linkedin } = basicInfo.personalInfo;
+  const { email, phone, location, github, linkedin, buyMeACoffee } = basicInfo.personalInfo;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -171,7 +172,7 @@ export default function Contact() {
                 transition={{ delay: 0.4 }}
               >
                 <h4 className="text-md font-medium text-gray-900 mb-4">Connect with me</h4>
-                <div className="flex space-x-4">
+                <div className="flex space-x-4 mb-6">
                   <motion.a 
                     href={github} 
                     className="text-gray-600" 
@@ -197,6 +198,32 @@ export default function Contact() {
                     </svg>
                   </motion.a>
                 </div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.5 }}
+                >
+                  <h4 className="text-md font-medium text-gray-900 mb-4">Support my work</h4>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    {buyMeACoffee && buyMeACoffee !== "https://buymeacoffee.com/yourusername" && (
+                      <motion.a
+                        href={buyMeACoffee}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center gap-2 bg-[#FFDD00] hover:bg-[#FFD700] text-gray-900 font-semibold py-2.5 px-5 rounded-lg transition-colors shadow-md hover:shadow-lg"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.38 0 2.5-1.12 2.5-2.5S19.88 3 18.5 3zM16 5v3H6V5h10zm2.5 5H18V5h.5c.28 0 .5.22.5.5s-.22.5-.5.5zM4 19h16v2H4v-2z"/>
+                        </svg>
+                        <span>Buy me a coffee</span>
+                      </motion.a>
+                    )}
+                    <RazorpayDonation />
+                  </div>
+                </motion.div>
               </motion.div>
             </motion.div>
           </motion.div>

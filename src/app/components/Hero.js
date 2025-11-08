@@ -4,13 +4,14 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import basicInfo from '../../data/basicInfo.json';
+import RazorpayDonation from './RazorpayDonation';
 
 export default function Hero() {
   const [text, setText] = useState('');
   const [index, setIndex] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const { name, bio, profileImage } = basicInfo.personalInfo;
+  const { name, bio, profileImage, buyMeACoffee } = basicInfo.personalInfo;
   const roles = basicInfo.roles;
   
   // Set component as mounted to prevent hydration mismatch
@@ -78,7 +79,7 @@ export default function Hero() {
             <p className="text-lg text-gray-600 mb-8 max-w-lg">
               {bio}
             </p>
-            <div className="flex space-x-4">
+            <div className="flex flex-wrap gap-4 mb-6">
               <motion.a 
                 href="#contact" 
                 className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-6 rounded-md transition-colors"
@@ -96,6 +97,75 @@ export default function Hero() {
                 View My Work
               </motion.a>
             </div>
+            
+            {/* Support Section */}
+            <motion.div
+              className="mt-8 p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200 shadow-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <motion.div
+                  animate={{
+                    rotate: [0, -10, 10, -10, 0],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    repeatDelay: 3,
+                  }}
+                >
+                  <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.38 0 2.5-1.12 2.5-2.5S19.88 3 18.5 3zM16 5v3H6V5h10zm2.5 5H18V5h.5c.28 0 .5.22.5.5s-.22.5-.5.5zM4 19h16v2H4v-2z"/>
+                  </svg>
+                </motion.div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Enjoying my work? Support me! ☕
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {buyMeACoffee && buyMeACoffee !== "https://buymeacoffee.com/yourusername" && (
+                  <motion.a
+                    href={buyMeACoffee}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 bg-[#FFDD00] hover:bg-[#FFD700] text-gray-900 font-semibold py-2.5 px-5 rounded-lg transition-all shadow-md hover:shadow-lg"
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <motion.svg
+                      className="w-5 h-5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                      animate={{
+                        scale: [1, 1.2, 1],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        repeatDelay: 2,
+                      }}
+                    >
+                      <path d="M18.5 3H6c-1.1 0-2 .9-2 2v5.71c0 3.83 2.95 7.18 6.78 7.29 3.96.12 7.22-3.06 7.22-7v-1h.5c1.38 0 2.5-1.12 2.5-2.5S19.88 3 18.5 3zM16 5v3H6V5h10zm2.5 5H18V5h.5c.28 0 .5.22.5.5s-.22.5-.5.5zM4 19h16v2H4v-2z"/>
+                    </motion.svg>
+                    <span>Buy me a coffee</span>
+                  </motion.a>
+                )}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="hero-razorpay-button"
+                >
+                  <RazorpayDonation />
+                </motion.div>
+              </div>
+            </motion.div>
           </motion.div>
           <motion.div 
             className="md:w-1/2 flex justify-center"
