@@ -64,19 +64,39 @@ export default function CheckoutModal({ service, onClose }) {
 
       const orderData = await response.json();
 
-      if (!response.ok || !orderData.success) {
-        throw new Error(orderData.error || 'Failed to create payment order');
+      if (!response.ok) {
+        // Show detailed error message
+        const errorMessage = orderData.details 
+          ? `${orderData.error || 'Payment failed'}: ${orderData.details}`
+          : orderData.error || 'Failed to create payment order';
+        
+        // Check if it's a configuration error
+        if (orderData.missingVariables) {
+          alert(`Configuration Error: ${errorMessage}\n\nPlease contact support or check your payment gateway configuration.`);
+        } else {
+          alert(`Payment Error: ${errorMessage}`);
+        }
+        
+        setIsProcessing(false);
+        return;
+      }
+
+      if (!orderData.success || !orderData.paymentUrl) {
+        throw new Error(orderData.error || 'Payment URL not received');
       }
 
       // Redirect to PhonePe payment page
-      if (orderData.paymentUrl) {
-        window.location.href = orderData.paymentUrl;
-      } else {
-        throw new Error('Payment URL not received');
-      }
+      window.location.href = orderData.paymentUrl;
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment initiation failed. Please try again.');
+      
+      // Show user-friendly error message
+      if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+        alert('Network error: Please check your internet connection and try again.');
+      } else {
+        alert(`Payment Error: ${error.message || 'Payment initiation failed. Please try again.'}`);
+      }
+      
       setIsProcessing(false);
     }
   };

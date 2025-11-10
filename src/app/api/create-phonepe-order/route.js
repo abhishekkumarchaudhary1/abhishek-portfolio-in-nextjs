@@ -20,9 +20,18 @@ export async function POST(request) {
     }
 
     // Check if PhonePe credentials are configured
-    if (!process.env.PHONEPE_MERCHANT_ID || !process.env.PHONEPE_SALT_KEY) {
+    const missingVars = [];
+    if (!process.env.PHONEPE_MERCHANT_ID) missingVars.push('PHONEPE_MERCHANT_ID');
+    if (!process.env.PHONEPE_SALT_KEY) missingVars.push('PHONEPE_SALT_KEY');
+    
+    if (missingVars.length > 0) {
+      console.error('Missing PhonePe environment variables:', missingVars);
       return NextResponse.json(
-        { error: 'PhonePe credentials not configured. Please set PHONEPE_MERCHANT_ID, PHONEPE_SALT_KEY, and PHONEPE_SALT_INDEX in your environment variables.' },
+        { 
+          error: 'PhonePe credentials not configured',
+          details: `Missing environment variables: ${missingVars.join(', ')}. Please set these in your Vercel project settings.`,
+          missingVariables: missingVars
+        },
         { status: 500 }
       );
     }
@@ -68,26 +77,61 @@ export async function POST(request) {
     const xVerify = sha256Hash + '###' + saltIndex;
 
     // Make API call to PhonePe
-    const phonePeResponse = await fetch(`${baseUrl}/pg/v1/pay`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'X-VERIFY': xVerify,
-        'X-MERCHANT-ID': merchantId
-      },
-      body: JSON.stringify({
-        request: base64Payload
-      })
-    });
+    let phonePeResponse;
+    let responseData;
+    
+    try {
+      console.log('Calling PhonePe API:', {
+        url: `${baseUrl}/pg/v1/pay`,
+        merchantId: merchantId,
+        environment: environment,
+        amount: amountInPaise
+      });
 
-    const responseData = await phonePeResponse.json();
+      phonePeResponse = await fetch(`${baseUrl}/pg/v1/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-VERIFY': xVerify,
+          'X-MERCHANT-ID': merchantId
+        },
+        body: JSON.stringify({
+          request: base64Payload
+        })
+      });
+
+      responseData = await phonePeResponse.json();
+      
+      console.log('PhonePe API Response Status:', phonePeResponse.status);
+      console.log('PhonePe API Response:', JSON.stringify(responseData).substring(0, 500));
+
+    } catch (fetchError) {
+      console.error('Error calling PhonePe API:', fetchError);
+      return NextResponse.json(
+        { 
+          error: 'Failed to connect to PhonePe API',
+          details: fetchError.message || 'Network error or PhonePe API is unavailable',
+          suggestion: 'Please check your PhonePe credentials and ensure the API endpoint is correct.'
+        },
+        { status: 500 }
+      );
+    }
 
     if (!phonePeResponse.ok) {
-      console.error('PhonePe API Error:', responseData);
+      console.error('PhonePe API Error:', {
+        status: phonePeResponse.status,
+        statusText: phonePeResponse.statusText,
+        response: responseData
+      });
+      
       return NextResponse.json(
-        { error: 'Failed to create payment order', details: responseData.message || 'Unknown error' },
-        { status: 500 }
+        { 
+          error: 'PhonePe API returned an error',
+          details: responseData.message || responseData.error || `HTTP ${phonePeResponse.status}: ${phonePeResponse.statusText}`,
+          response: responseData
+        },
+        { status: phonePeResponse.status || 500 }
       );
     }
 
@@ -140,8 +184,26 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Error creating PhonePe order:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Handle JSON parsing errors
+    if (error instanceof SyntaxError) {
+      return NextResponse.json(
+        { 
+          error: 'Invalid request data',
+          details: 'Failed to parse request JSON. Please check the request format.',
+          message: error.message
+        },
+        { status: 400 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: 'Failed to create payment order', details: error.message },
+      { 
+        error: 'Failed to create payment order',
+        details: error.message || 'An unexpected error occurred',
+        type: error.constructor.name
+      },
       { status: 500 }
     );
   }
