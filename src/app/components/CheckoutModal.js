@@ -66,13 +66,20 @@ export default function CheckoutModal({ service, onClose }) {
 
       if (!response.ok) {
         // Show detailed error message
-        const errorMessage = orderData.details 
+        let errorMessage = orderData.details 
           ? `${orderData.error || 'Payment failed'}: ${orderData.details}`
           : orderData.error || 'Failed to create payment order';
+        
+        // Add suggestion if available
+        if (orderData.suggestion) {
+          errorMessage += `\n\n${orderData.suggestion}`;
+        }
         
         // Check if it's a configuration error
         if (orderData.missingVariables) {
           alert(`Configuration Error: ${errorMessage}\n\nPlease contact support or check your payment gateway configuration.`);
+        } else if (orderData.details && orderData.details.includes('key not found')) {
+          alert(`PhonePe Authentication Error\n\n${errorMessage}\n\nThis usually means:\n• Merchant ID is incorrect\n• Salt Key doesn't match Merchant ID\n• Wrong environment (SANDBOX vs PRODUCTION)\n• Merchant account not activated\n\nPlease check your PhonePe credentials in Vercel environment variables.`);
         } else {
           alert(`Payment Error: ${errorMessage}`);
         }

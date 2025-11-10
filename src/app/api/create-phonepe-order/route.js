@@ -125,11 +125,29 @@ export async function POST(request) {
         response: responseData
       });
       
+      // Handle specific PhonePe error messages
+      let errorDetails = responseData.message || responseData.error || `HTTP ${phonePeResponse.status}: ${phonePeResponse.statusText}`;
+      let suggestion = '';
+      
+      // Check for common PhonePe errors
+      if (errorDetails.toLowerCase().includes('key not found') || 
+          errorDetails.toLowerCase().includes('merchant') ||
+          responseData.code === 'BAD_REQUEST') {
+        suggestion = 'Please verify:\n1. Merchant ID is correct\n2. Salt Key matches the Merchant ID\n3. You are using SANDBOX credentials for SANDBOX environment (or PRODUCTION for PRODUCTION)\n4. Your PhonePe merchant account is activated';
+        errorDetails = `PhonePe Authentication Error: ${errorDetails}`;
+      }
+      
       return NextResponse.json(
         { 
           error: 'PhonePe API returned an error',
-          details: responseData.message || responseData.error || `HTTP ${phonePeResponse.status}: ${phonePeResponse.statusText}`,
-          response: responseData
+          details: errorDetails,
+          suggestion: suggestion,
+          response: responseData,
+          troubleshooting: {
+            merchantId: merchantId ? `${merchantId.substring(0, 4)}...` : 'Not set',
+            environment: environment,
+            checkCredentials: 'Verify Merchant ID and Salt Key match and are for the correct environment (SANDBOX/PRODUCTION)'
+          }
         },
         { status: phonePeResponse.status || 500 }
       );
