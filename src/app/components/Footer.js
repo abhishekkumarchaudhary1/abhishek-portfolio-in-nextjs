@@ -90,7 +90,7 @@ export default function Footer() {
                   transition={{ duration: 0.2 }}
                 >
                   <a 
-                    href={`#${item}`} 
+                    href={`/#${item}`} 
                     className="text-gray-400 hover:text-white transition-colors"
                   >
                     {item.charAt(0).toUpperCase() + item.slice(1)}

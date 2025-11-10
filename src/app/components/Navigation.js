@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import basicInfo from '../../data/basicInfo.json';
 
@@ -9,6 +10,8 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const { name } = basicInfo.personalInfo;
+  const pathname = usePathname();
+  const router = useRouter();
 
   // Mark component as mounted
   useEffect(() => {
@@ -39,20 +42,27 @@ export default function Navigation() {
 
   // Handle navigation click
   const handleNavClick = (e, id) => {
+    // If on home page, smooth scroll
+    if (pathname === '/') {
+      e.preventDefault();
+      setIsMenuOpen(false);
+      
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          const offsetTop = element.getBoundingClientRect().top + window.pageYOffset;
+          window.scrollTo({
+            top: offsetTop,
+            behavior: 'smooth'
+          });
+        }, 10);
+      }
+      return;
+    }
+    // If on a different route, navigate to home with hash
     e.preventDefault();
     setIsMenuOpen(false);
-    
-    const element = document.getElementById(id);
-    if (element) {
-      // Add a small delay to ensure the menu closes before scrolling
-      setTimeout(() => {
-        const offsetTop = element.getBoundingClientRect().top + window.pageYOffset;
-        window.scrollTo({
-          top: offsetTop,
-          behavior: 'smooth'
-        });
-      }, 10);
-    }
+    router.push(`/#${id}`);
   };
 
   return (
@@ -61,7 +71,7 @@ export default function Navigation() {
         <nav className="flex items-center justify-between">
           {/* Logo/Name */}
           <motion.a 
-            href="#home" 
+            href="/#home" 
             className="text-xl font-bold text-gray-900"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -77,7 +87,7 @@ export default function Navigation() {
             {['home', 'about', 'skills', 'projects', 'services', 'contact'].map((item, index) => (
               <motion.a
                 key={item}
-                href={`#${item}`}
+                href={`/#${item}`}
                 className="text-sm font-medium text-gray-800 hover:text-indigo-600 transition-colors"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -158,7 +168,7 @@ export default function Navigation() {
             {['home', 'about', 'skills', 'projects', 'services', 'contact'].map((item) => (
               <a
                 key={item}
-                href={`#${item}`}
+                href={`/#${item}`}
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-indigo-50 hover:text-indigo-600"
                 onClick={(e) => handleNavClick(e, item)}
               >

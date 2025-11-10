@@ -5,10 +5,7 @@ import dynamic from 'next/dynamic';
 
 export const dynamicParams = false;
 
-const TermsContent = dynamic(async () => {
-  const module = await import('./termsContent');
-  return module.default;
-});
+const TermsContent = dynamic(() => import('./termsContent'));
 
 export default function TermsPage() {
   return (
