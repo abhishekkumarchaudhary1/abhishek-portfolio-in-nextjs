@@ -48,7 +48,16 @@ PHONEPE_MERCHANT_ID=your_merchant_id
 
 The Salt Key and Salt Index are **not always visible** in the PhonePe Business Dashboard. Here's how to get them:
 
-#### Option 1: Check Your Dashboard
+#### Option 1: Check Developer Portal (Recommended)
+1. Visit **[developer.phonepe.com](https://developer.phonepe.com/)**
+2. Log in with your PhonePe Business account
+3. Go to **Developer Settings** or **API Settings**
+4. Look for:
+   - **Merchant ID** (also called "Merchant Key")
+   - **Salt Key** (click "Show" or "Reveal" if hidden)
+   - **Salt Index** (usually `1`)
+
+#### Option 2: Check Business Dashboard
 1. Log in to your [PhonePe Business Dashboard](https://business.phonepe.com/)
 2. Go to **Settings** → **API Settings** or **Developer Settings**
 3. Look for:
@@ -56,11 +65,11 @@ The Salt Key and Salt Index are **not always visible** in the PhonePe Business D
    - **Salt Index** (usually `1`)
    - **Merchant ID** (also called "Merchant Key" or "Merchant ID")
 
-#### Option 2: Check Your Integration Documents
+#### Option 3: Check Your Integration Documents
 - Check the email/documentation you received when you signed up for PhonePe Business
 - Look for integration credentials or API credentials document
 
-#### Option 3: Contact PhonePe Support
+#### Option 4: Contact PhonePe Support
 If you can't find the Salt Key in your dashboard:
 
 1. **Email PhonePe Support:**
@@ -211,6 +220,8 @@ The webhook handler in `src/app/api/phonepe-webhook/route.js` includes placehold
 ## Support
 
 For PhonePe-specific issues:
-- Check [PhonePe Developer Documentation](https://developer.phonepe.com/)
-- Contact PhonePe Support through your business dashboard
+- **Developer Portal:** [developer.phonepe.com](https://developer.phonepe.com/) - Get your API keys here
+- **Developer Documentation:** [PhonePe Developer Docs](https://developer.phonepe.com/)
+- **Support Email:** support@phonepe.com
+- **📖 Detailed API Keys Setup:** See `PHONEPE_API_KEYS_SETUP.md` for step-by-step instructions
 

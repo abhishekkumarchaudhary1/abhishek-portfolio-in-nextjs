@@ -15,19 +15,7 @@ export default function CheckoutModal({ service, onClose }) {
 
   const { name } = basicInfo.personalInfo;
 
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+  // PhonePe doesn't require loading a script - we redirect to their payment page
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -60,16 +48,8 @@ export default function CheckoutModal({ service, onClose }) {
     setIsProcessing(true);
 
     try {
-      // Load Razorpay script
-      const razorpayLoaded = await loadRazorpay();
-      if (!razorpayLoaded) {
-        alert('Failed to load payment gateway. Please try again.');
-        setIsProcessing(false);
-        return;
-      }
-
-      // Create order on your backend
-      const response = await fetch('/api/create-order', {
+      // Create PhonePe payment order on your backend
+      const response = await fetch('/api/create-phonepe-order', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,83 +64,25 @@ export default function CheckoutModal({ service, onClose }) {
 
       const orderData = await response.json();
 
-      if (!response.ok) {
-        throw new Error(orderData.error || 'Failed to create order');
+      if (!response.ok || !orderData.success) {
+        throw new Error(orderData.error || 'Failed to create payment order');
       }
 
-      // Initialize Razorpay checkout
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: orderData.amount,
-        currency: 'INR',
-        name: name,
-        description: `${service.title} - Service Payment`,
-        order_id: orderData.id,
-        handler: function (response) {
-          // Handle successful payment
-          verifyPayment(response);
-        },
-        prefill: {
-          name: customerDetails.name,
-          email: customerDetails.email,
-          contact: customerDetails.phone,
-        },
-        theme: {
-          color: '#4F46E5',
-        },
-        modal: {
-          ondismiss: function () {
-            setIsProcessing(false);
-          },
-        },
-      };
-
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      // Redirect to PhonePe payment page
+      if (orderData.paymentUrl) {
+        window.location.href = orderData.paymentUrl;
+      } else {
+        throw new Error('Payment URL not received');
+      }
     } catch (error) {
       console.error('Payment error:', error);
-      alert('Payment failed. Please try again.');
+      alert('Payment initiation failed. Please try again.');
       setIsProcessing(false);
     }
   };
 
-  const verifyPayment = async (paymentResponse) => {
-    try {
-      const response = await fetch('/api/verify-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...paymentResponse,
-          serviceId: service.id,
-          serviceName: service.title,
-          customerDetails: customerDetails
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        alert('Payment successful! Thank you for your order. I will contact you soon.');
-        onClose();
-        // Reset form
-        setCustomerDetails({
-          name: '',
-          email: '',
-          phone: '',
-          message: ''
-        });
-      } else {
-        alert('Payment verification failed. Please contact support.');
-      }
-    } catch (error) {
-      console.error('Verification error:', error);
-      alert('Payment verification failed. Please contact support.');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // Payment verification is now handled on the success page
+  // No need for this function anymore as PhonePe redirects to success page
 
   return (
     <AnimatePresence>
@@ -283,7 +205,7 @@ export default function CheckoutModal({ service, onClose }) {
             </div>
 
             <p className="text-xs text-gray-500 text-center mt-4">
-              Secure payment powered by Razorpay
+              Secure payment powered by PhonePe
             </p>
           </div>
         </motion.div>
