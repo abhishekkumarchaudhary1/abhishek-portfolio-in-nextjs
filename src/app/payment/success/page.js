@@ -123,7 +123,7 @@ function PaymentSuccessContent() {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Verification Error</h2>
             <p className="text-gray-600 mb-4">
-              We couldn't verify your payment status. Please contact support if the amount was deducted.
+              We couldn&apos;t verify your payment status. Please contact support if the amount was deducted.
             </p>
             <button
               onClick={() => router.push('/')}
