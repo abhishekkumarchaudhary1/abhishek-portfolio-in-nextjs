@@ -88,6 +88,16 @@ export default function Navigation() {
                 {item.charAt(0).toUpperCase() + item.slice(1)}
               </motion.a>
             ))}
+            <motion.a
+              href="/terms"
+              className="text-sm font-medium text-gray-800 hover:text-indigo-600 transition-colors"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              whileHover={{ y: -3 }}
+            >
+              Terms and Conditions
+            </motion.a>
             
             {/* Resume Download Button */}
             <motion.a
@@ -155,6 +165,13 @@ export default function Navigation() {
                 {item.charAt(0).toUpperCase() + item.slice(1)}
               </a>
             ))}
+            <a
+              href="/terms"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-900 hover:bg-indigo-50 hover:text-indigo-600"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Terms & Conditions
+            </a>
             
             {/* Mobile Resume Download Button */}
             <a

@@ -97,6 +97,17 @@ export default function Footer() {
                   </a>
                 </motion.li>
               ))}
+              <motion.li 
+                whileHover={{ x: 5 }}
+                transition={{ duration: 0.2 }}
+              >
+                <a 
+                  href="/terms" 
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  Terms & Conditions
+                </a>
+              </motion.li>
             </ul>
           </motion.div>
           
