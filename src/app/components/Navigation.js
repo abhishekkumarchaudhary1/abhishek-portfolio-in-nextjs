@@ -74,7 +74,7 @@ export default function Navigation() {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex space-x-8">
-            {['home', 'about', 'skills', 'projects', 'contact'].map((item, index) => (
+            {['home', 'about', 'skills', 'projects', 'services', 'contact'].map((item, index) => (
               <motion.a
                 key={item}
                 href={`#${item}`}
@@ -145,7 +145,7 @@ export default function Navigation() {
           transition={{ duration: 0.3 }}
         >
           <div className="py-3 space-y-2">
-            {['home', 'about', 'skills', 'projects', 'contact'].map((item) => (
+            {['home', 'about', 'skills', 'projects', 'services', 'contact'].map((item) => (
               <a
                 key={item}
                 href={`#${item}`}

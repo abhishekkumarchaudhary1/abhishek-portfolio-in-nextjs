@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { amount } = await request.json();
+    const { amount, serviceId, serviceName, customerDetails } = await request.json();
 
     if (!amount || amount < 1) {
       return NextResponse.json(
@@ -30,7 +30,15 @@ export async function POST(request) {
     const options = {
       amount: amount, // amount in paise
       currency: 'INR',
-      receipt: `receipt_${Date.now()}`,
+      receipt: `receipt_${Date.now()}_${serviceId || 'donation'}`,
+      notes: {
+        serviceId: serviceId || 'donation',
+        serviceName: serviceName || 'Donation',
+        customerName: customerDetails?.name || '',
+        customerEmail: customerDetails?.email || '',
+        customerPhone: customerDetails?.phone || '',
+        customerMessage: customerDetails?.message || ''
+      }
     };
 
     const order = await razorpay.orders.create(options);

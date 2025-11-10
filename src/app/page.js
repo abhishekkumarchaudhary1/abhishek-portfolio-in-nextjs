@@ -8,6 +8,7 @@ const Hero = dynamic(() => import('./components/Hero'));
 const About = dynamic(() => import('./components/About'));
 const Projects = dynamic(() => import('./components/Projects'));
 const Skills = dynamic(() => import('./components/Skills'));
+const Services = dynamic(() => import('./components/Services'));
 const Contact = dynamic(() => import('./components/Contact'));
 
 // Add loading fallbacks
@@ -31,6 +32,9 @@ export default function Home() {
       </Suspense>
       <Suspense fallback={<LoadingPlaceholder />}>
         <Projects />
+      </Suspense>
+      <Suspense fallback={<LoadingPlaceholder />}>
+        <Services />
       </Suspense>
       <Suspense fallback={<LoadingPlaceholder />}>
         <Contact />
