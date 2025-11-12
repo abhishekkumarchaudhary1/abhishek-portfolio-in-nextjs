@@ -31,11 +31,20 @@ function PaymentSuccessContent() {
 
         const data = await response.json();
 
-        if (data.success) {
+        // Handle different payment states from SDK
+        if (data.success || data.isCompleted) {
           setPaymentStatus('success');
+          setPaymentData(data);
+        } else if (data.isPending) {
+          // Payment is still pending - show pending state
+          setPaymentStatus('pending');
+          setPaymentData(data);
+        } else if (data.isFailed || data.paymentStatus === 'FAILED') {
+          setPaymentStatus('failed');
           setPaymentData(data);
         } else {
           setPaymentStatus('failed');
+          setPaymentData(data);
         }
       } catch (error) {
         console.error('Payment verification error:', error);
@@ -94,6 +103,30 @@ function PaymentSuccessContent() {
           </>
         )}
 
+        {paymentStatus === 'pending' && (
+          <>
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-yellow-600"></div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Pending</h2>
+            <p className="text-gray-600 mb-4">
+              Your payment is being processed. Please wait a few moments and refresh this page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors mb-2"
+            >
+              Refresh Status
+            </button>
+            <button
+              onClick={() => router.push('/')}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-3 px-6 rounded-lg transition-colors"
+            >
+              Return to Home
+            </button>
+          </>
+        )}
+
         {paymentStatus === 'failed' && (
           <>
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -105,6 +138,18 @@ function PaymentSuccessContent() {
             <p className="text-gray-600 mb-4">
               Your payment could not be processed. Please try again.
             </p>
+            {paymentData?.errorCode && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
+                <p className="text-sm text-gray-600">
+                  <span className="font-semibold">Error Code:</span> {paymentData.errorCode}
+                </p>
+                {paymentData.detailedErrorCode && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    <span className="font-semibold">Details:</span> {paymentData.detailedErrorCode}
+                  </p>
+                )}
+              </div>
+            )}
             <button
               onClick={() => router.push('/')}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
