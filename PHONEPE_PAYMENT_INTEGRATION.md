@@ -50,7 +50,7 @@ PHONEPE_SALT_INDEX=1
 PHONEPE_ENVIRONMENT=SANDBOX  # Use 'PRODUCTION' for live payments
 
 # Base URL for redirects (your deployed URL)
-NEXT_PUBLIC_BASE_URL=https://abhishek-portfolio-in-nextjs.vercel.app
+NEXT_PUBLIC_BASE_URL=https://abhishek-chaudhary.com
 ```
 
 **Where to get these:**
@@ -219,7 +219,7 @@ The webhook is already configured and will work with your payment integration.
 
 - **PhonePe Developer Docs:** https://developer.phonepe.com/
 - **PhonePe Support:** support@phonepe.com
-- **Your Webhook Endpoint:** https://abhishek-portfolio-in-nextjs.vercel.app/api/phonepe-webhook
+- **Your Webhook Endpoint:** https://abhishek-chaudhary.com/api/phonepe-webhook
 
 ---
 

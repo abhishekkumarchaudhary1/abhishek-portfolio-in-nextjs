@@ -3,7 +3,7 @@
 ## ✅ Your Webhook is Live!
 
 Your webhook endpoint is successfully deployed and accessible at:
-**https://abhishek-portfolio-in-nextjs.vercel.app/api/phonepe-webhook**
+**https://abhishek-chaudhary.com/api/phonepe-webhook**
 
 Now you need to get your API credentials from PhonePe Developer Portal to enable webhook signature verification.
 
@@ -99,7 +99,7 @@ vercel pull
 After adding the environment variables and redeploying:
 
 1. **Test the webhook endpoint:**
-   - Visit: https://abhishek-portfolio-in-nextjs.vercel.app/api/phonepe-webhook
+   - Visit: https://abhishek-chaudhary.com/api/phonepe-webhook
    - You should see: `{"message":"PhonePe Webhook Endpoint","status":"active",...}`
 
 2. **Check Vercel logs:**

@@ -62,8 +62,24 @@ export async function POST(request) {
     // Amount in paise (PhonePe expects amount in smallest currency unit)
     const amountInPaise = Math.round(parseFloat(amount));
 
-    // Build redirect URL
-    const redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || 'https://abhishek-portfolio-in-nextjs.vercel.app'}/payment/success?transactionId=${merchantOrderId}`;
+    // Build redirect URL (must be whitelisted in PhonePe dashboard)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://abhishek-chaudhary.com';
+    const redirectUrl = `${baseUrl}/payment/success?transactionId=${merchantOrderId}`;
+    
+    // Validate redirect URL format
+    try {
+      new URL(redirectUrl); // This will throw if URL is invalid
+    } catch (urlError) {
+      console.error('Invalid redirect URL format:', redirectUrl);
+      return NextResponse.json(
+        { 
+          error: 'Invalid redirect URL configuration',
+          details: `The redirect URL is malformed: ${redirectUrl}`,
+          suggestion: 'Please check NEXT_PUBLIC_BASE_URL environment variable'
+        },
+        { status: 400 }
+      );
+    }
 
     // Create meta info with customer details (optional)
     const metaInfoBuilder = MetaInfo.builder();
@@ -100,25 +116,62 @@ export async function POST(request) {
     // Make payment request using SDK
     let paymentResponse;
     try {
+      // Log full request details for debugging
+      console.log('PhonePe Payment Request Details:', {
+        merchantOrderId: merchantOrderId,
+        amount: amountInPaise,
+        amountInRupees: (amountInPaise / 100).toFixed(2),
+        redirectUrl: redirectUrl,
+        environment: environment,
+        hasMetaInfo: !!metaInfo,
+        customerDetails: {
+          hasName: !!customerDetails?.name,
+          hasEmail: !!customerDetails?.email,
+          hasPhone: !!customerDetails?.phone
+        }
+      });
+
       paymentResponse = await client.pay(payRequest);
       
       console.log('PhonePe SDK Response:', {
         success: !!paymentResponse.redirectUrl,
-        hasRedirectUrl: !!paymentResponse.redirectUrl
+        hasRedirectUrl: !!paymentResponse.redirectUrl,
+        responseKeys: paymentResponse ? Object.keys(paymentResponse) : [],
+        fullResponse: JSON.stringify(paymentResponse, null, 2)
       });
 
     } catch (sdkError) {
-      console.error('PhonePe SDK Error:', {
+      console.error('PhonePe SDK Error Details:', {
         error: sdkError.message,
         stack: sdkError.stack,
-        name: sdkError.constructor?.name
+        name: sdkError.constructor?.name,
+        httpStatusCode: sdkError.httpStatusCode,
+        code: sdkError.code,
+        data: sdkError.data,
+        fullError: JSON.stringify(sdkError, Object.getOwnPropertyNames(sdkError), 2)
       });
 
       // Handle SDK-specific errors
       let errorDetails = sdkError.message || 'Unknown SDK error';
       let suggestion = '';
 
-      if (errorDetails.toLowerCase().includes('authentication') || 
+      // Check for 400 Bad Request errors
+      if (sdkError.httpStatusCode === 400) {
+        errorDetails = `Bad Request (400): ${errorDetails}`;
+        suggestion = `PhonePe returned a 400 Bad Request error. This usually means:\n\n` +
+          `1. ✅ Check Redirect URL: Ensure your redirect URL is whitelisted in PhonePe dashboard\n` +
+          `   Current URL: ${redirectUrl}\n\n` +
+          `2. ✅ Verify Amount: Amount must be in paise (smallest currency unit)\n` +
+          `   Current: ${amountInPaise} paise (₹${(amountInPaise / 100).toFixed(2)})\n` +
+          `   Minimum: 100 paise (₹1)\n\n` +
+          `3. ✅ Check Merchant Order ID: Must be unique and valid format\n` +
+          `   Current: ${merchantOrderId}\n\n` +
+          `4. ✅ Environment Match: Ensure credentials match environment\n` +
+          `   Current: ${environment}\n\n` +
+          `5. ✅ PhonePe Dashboard: Check if redirect URL is configured in PhonePe dashboard\n` +
+          `   Go to: PhonePe Dashboard → Settings → Redirect URLs\n\n` +
+          `6. ✅ Account Status: Verify your PhonePe account is activated for payments`;
+      } else if (errorDetails.toLowerCase().includes('authentication') || 
           errorDetails.toLowerCase().includes('invalid') ||
           errorDetails.toLowerCase().includes('key') ||
           errorDetails.toLowerCase().includes('credential')) {
