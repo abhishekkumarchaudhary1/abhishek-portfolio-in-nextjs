@@ -9,10 +9,16 @@ import { StandardCheckoutClient, Env } from 'pg-sdk-node';
  */
 
 export async function POST(request) {
+  console.log('=== PhonePe Payment Verification Started ===');
   try {
-    const { merchantTransactionId } = await request.json();
+    const requestBody = await request.json();
+    console.log('Verification Request Body:', requestBody);
+    
+    const { merchantTransactionId } = requestBody;
+    console.log('Merchant Transaction ID:', merchantTransactionId);
 
     if (!merchantTransactionId) {
+      console.error('ERROR: Missing merchant transaction ID');
       return NextResponse.json(
         { error: 'Missing merchant transaction ID' },
         { status: 400 }
@@ -44,11 +50,12 @@ export async function POST(request) {
     const environment = process.env.PHONEPE_ENVIRONMENT || 'SANDBOX';
     const env = environment === 'PRODUCTION' ? Env.PRODUCTION : Env.SANDBOX;
 
-    console.log('PhonePe Verification Request:', {
-      merchantTransactionId: merchantTransactionId,
-      environment: environment,
-      clientId: clientId ? `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}` : 'NOT SET'
-    });
+    console.log('=== PhonePe Verification Configuration ===');
+    console.log('Merchant Transaction ID:', merchantTransactionId);
+    console.log('Environment:', environment);
+    console.log('Client ID:', clientId ? `${clientId.substring(0, 4)}...${clientId.substring(clientId.length - 4)}` : 'NOT SET');
+    console.log('Client Secret Length:', clientSecret?.length || 0);
+    console.log('Client Version:', clientVersion);
 
     // Initialize PhonePe client
     const client = StandardCheckoutClient.getInstance(
@@ -59,12 +66,21 @@ export async function POST(request) {
     );
 
     // Get order status using SDK
+    console.log('=== Calling PhonePe SDK getOrderStatus ===');
     let orderStatus;
     try {
+      console.log('Calling client.getOrderStatus with:', merchantTransactionId);
       orderStatus = await client.getOrderStatus(merchantTransactionId);
       
+      console.log('=== PhonePe SDK Response Received ===');
+      console.log('Order State:', orderStatus.state);
+      console.log('Order ID:', orderStatus.order_id);
+      console.log('Amount:', orderStatus.amount);
+      console.log('Payment Details Count:', orderStatus.payment_details?.length || 0);
+      
       // Log full response for debugging
-      console.log('PhonePe Order Status Response (Full):', JSON.stringify({
+      console.log('=== Full Order Status Response ===');
+      console.log(JSON.stringify({
         state: orderStatus.state,
         orderId: orderStatus.order_id,
         amount: orderStatus.amount,
@@ -147,27 +163,60 @@ export async function POST(request) {
     const latestPaymentFailed = latestPayment?.state === 'FAILED';
     const isFailed = (orderFailed || latestPaymentFailed) && !isSuccess;
 
-    console.log('Payment Status Check:', {
-      orderState: orderStatus.state,
-      latestPaymentState: latestPayment?.state,
-      anyPaymentCompleted,
-      orderCompleted,
-      isSuccess,
-      isPending,
-      isFailed,
-      allPaymentStates: orderStatus.payment_details?.map(p => p.state) || []
-    });
+    console.log('=== Payment Status Analysis ===');
+    console.log('Order State:', orderStatus.state);
+    console.log('Latest Payment State:', latestPayment?.state || 'N/A');
+    console.log('Any Payment Completed:', anyPaymentCompleted);
+    console.log('Order Completed:', orderCompleted);
+    console.log('Latest Payment Completed:', latestPaymentCompleted);
+    console.log('Final Success Status:', isSuccess);
+    console.log('Is Pending:', isPending);
+    console.log('Is Failed:', isFailed);
+    console.log('All Payment States:', orderStatus.payment_details?.map(p => p.state) || []);
 
-    return NextResponse.json({
+    // Get transaction ID from payment details
+    // Try to get from completed payment first, then latest payment
+    let transactionId = null;
+    if (orderStatus.payment_details && orderStatus.payment_details.length > 0) {
+      // First, try to find a completed payment's transaction ID
+      const completedPayment = orderStatus.payment_details.find(
+        payment => payment.state === 'COMPLETED'
+      );
+      if (completedPayment?.transactionId) {
+        transactionId = completedPayment.transactionId;
+        console.log('Found transaction ID from completed payment:', transactionId);
+      } else if (latestPayment?.transactionId) {
+        // Fallback to latest payment's transaction ID
+        transactionId = latestPayment.transactionId;
+        console.log('Found transaction ID from latest payment:', transactionId);
+      } else {
+        console.log('No transaction ID found in payment details. Available fields:', 
+          latestPayment ? Object.keys(latestPayment) : 'No latest payment');
+      }
+    } else {
+      console.log('No payment details available');
+    }
+    
+    // Final fallback
+    const finalTransactionId = transactionId || orderStatus.order_id || merchantTransactionId;
+    console.log('=== Transaction ID Resolution ===');
+    console.log('Extracted Transaction ID:', transactionId || 'Not found');
+    console.log('Order ID (fallback):', orderStatus.order_id);
+    console.log('Merchant Transaction ID (fallback):', merchantTransactionId);
+    console.log('Final Transaction ID to return:', finalTransactionId);
+
+    console.log('=== Preparing Response ===');
+    const responseData = {
       success: isSuccess,
       paymentStatus: orderStatus.state,
       orderId: orderStatus.order_id,
       merchantTransactionId: merchantTransactionId,
+      // Use transactionId from payment details, or fallback to orderId
+      transactionId: finalTransactionId,
       amount: orderStatus.amount,
       expireAt: orderStatus.expire_at,
       metaInfo: orderStatus.metaInfo,
       // Include latest payment details if available
-      transactionId: latestPayment?.transactionId,
       paymentMode: latestPayment?.paymentMode,
       paymentState: latestPayment?.state,
       paymentTimestamp: latestPayment?.timestamp,
@@ -179,9 +228,16 @@ export async function POST(request) {
       isPending: isPending,
       isFailed: isFailed,
       isCompleted: isSuccess
-    });
+    };
+    
+    console.log('=== Final Response Data ===');
+    console.log(JSON.stringify(responseData, null, 2));
+    console.log('=== PhonePe Payment Verification Completed ===');
+    
+    return NextResponse.json(responseData);
 
   } catch (error) {
+    console.error('=== ERROR in PhonePe Verification ===');
     console.error('Error verifying PhonePe payment:', error);
     console.error('Error stack:', error.stack);
     

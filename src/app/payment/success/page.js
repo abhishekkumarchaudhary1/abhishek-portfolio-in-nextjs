@@ -84,12 +84,24 @@ function PaymentSuccessContent() {
             </p>
             {paymentData && (
               <div className="bg-gray-50 rounded-lg p-4 mb-4 text-left">
-                <p className="text-sm text-gray-600">
-                  <span className="font-semibold">Transaction ID:</span> {paymentData.transactionId}
-                </p>
+                {paymentData.transactionId && (
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold">Transaction ID:</span> {paymentData.transactionId}
+                  </p>
+                )}
+                {paymentData.orderId && paymentData.orderId !== paymentData.transactionId && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    <span className="font-semibold">Order ID:</span> {paymentData.orderId}
+                  </p>
+                )}
                 {paymentData.amount && (
                   <p className="text-sm text-gray-600 mt-2">
                     <span className="font-semibold">Amount:</span> ₹{(paymentData.amount / 100).toFixed(2)}
+                  </p>
+                )}
+                {paymentData.merchantTransactionId && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    <span className="font-semibold">Merchant Order ID:</span> {paymentData.merchantTransactionId}
                   </p>
                 )}
               </div>

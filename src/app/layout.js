@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata = {
   title: 'Portfolio',
   description: 'My personal portfolio website',
+  icons: {
+    icon: '/abhishekportfoliologowithwhitebg.svg',
+    shortcut: '/abhishekportfoliologowithwhitebg.svg',
+    apple: '/abhishekportfoliologowithwhitebg.svg',
+  },
 };
 
 export default function RootLayout({ children }) {
