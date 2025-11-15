@@ -141,15 +141,37 @@ export async function POST(request) {
       });
 
     } catch (sdkError) {
-      console.error('PhonePe SDK Error Details:', {
+      // Log comprehensive error details
+      const errorLog = {
         error: sdkError.message,
         stack: sdkError.stack,
         name: sdkError.constructor?.name,
         httpStatusCode: sdkError.httpStatusCode,
         code: sdkError.code,
         data: sdkError.data,
-        fullError: JSON.stringify(sdkError, Object.getOwnPropertyNames(sdkError), 2)
-      });
+        response: sdkError.response,
+        status: sdkError.status,
+        statusText: sdkError.statusText
+      };
+      
+      console.error('=== PhonePe SDK Error Details ===');
+      console.error(JSON.stringify(errorLog, null, 2));
+      console.error('Full Error Object:', sdkError);
+      
+      // Try to extract more details from error data
+      let phonePeErrorCode = null;
+      let phonePeErrorMessage = null;
+      if (sdkError.data) {
+        try {
+          const errorData = typeof sdkError.data === 'string' ? JSON.parse(sdkError.data) : sdkError.data;
+          phonePeErrorCode = errorData.code || errorData.errorCode;
+          phonePeErrorMessage = errorData.message || errorData.errorMessage || errorData.details;
+          console.error('PhonePe Error Code:', phonePeErrorCode);
+          console.error('PhonePe Error Message:', phonePeErrorMessage);
+        } catch (e) {
+          console.error('Could not parse error data:', sdkError.data);
+        }
+      }
 
       // Handle SDK-specific errors
       let errorDetails = sdkError.message || 'Unknown SDK error';
@@ -157,20 +179,33 @@ export async function POST(request) {
 
       // Check for 400 Bad Request errors
       if (sdkError.httpStatusCode === 400) {
-        errorDetails = `Bad Request (400): ${errorDetails}`;
-        suggestion = `PhonePe returned a 400 Bad Request error. This usually means:\n\n` +
-          `1. ✅ Check Redirect URL: Ensure your redirect URL is whitelisted in PhonePe dashboard\n` +
-          `   Current URL: ${redirectUrl}\n\n` +
-          `2. ✅ Verify Amount: Amount must be in paise (smallest currency unit)\n` +
+        errorDetails = `Bad Request (400): ${phonePeErrorMessage || errorDetails}`;
+        suggestion = `PhonePe returned a 400 Bad Request error.\n\n` +
+          `Error Code: ${phonePeErrorCode || 'Not provided'}\n` +
+          `Error Message: ${phonePeErrorMessage || errorDetails}\n\n` +
+          `Common causes and solutions:\n\n` +
+          `1. ✅ Redirect URL Not Whitelisted (MOST COMMON)\n` +
+          `   - Go to PhonePe Dashboard → Settings → Redirect URLs\n` +
+          `   - Add: ${redirectUrl.replace(/\?.*$/, '*')} or ${baseUrl}/payment/success*\n` +
+          `   - Wait 5-10 minutes after adding\n\n` +
+          `2. ✅ Verify Amount\n` +
           `   Current: ${amountInPaise} paise (₹${(amountInPaise / 100).toFixed(2)})\n` +
-          `   Minimum: 100 paise (₹1)\n\n` +
-          `3. ✅ Check Merchant Order ID: Must be unique and valid format\n` +
-          `   Current: ${merchantOrderId}\n\n` +
-          `4. ✅ Environment Match: Ensure credentials match environment\n` +
-          `   Current: ${environment}\n\n` +
-          `5. ✅ PhonePe Dashboard: Check if redirect URL is configured in PhonePe dashboard\n` +
-          `   Go to: PhonePe Dashboard → Settings → Redirect URLs\n\n` +
-          `6. ✅ Account Status: Verify your PhonePe account is activated for payments`;
+          `   Minimum: 100 paise (₹1)\n` +
+          `   Maximum: Check PhonePe limits\n\n` +
+          `3. ✅ Check Environment Variables\n` +
+          `   PHONEPE_ENVIRONMENT: ${environment}\n` +
+          `   NEXT_PUBLIC_BASE_URL: ${baseUrl}\n` +
+          `   Make sure these match your PhonePe dashboard settings\n\n` +
+          `4. ✅ Account Activation\n` +
+          `   - Verify your PhonePe merchant account is fully activated\n` +
+          `   - Check if payments are enabled in your account\n` +
+          `   - Contact PhonePe support if account is pending\n\n` +
+          `5. ✅ Check Vercel Logs\n` +
+          `   - Go to Vercel Dashboard → Your Project → Functions\n` +
+          `   - Look for detailed error messages from PhonePe\n\n` +
+          `6. ✅ Try Different Redirect URL Format\n` +
+          `   - Try without query parameters: ${baseUrl}/payment/success\n` +
+          `   - Or with wildcard: ${baseUrl}/payment/success*`;
       } else if (errorDetails.toLowerCase().includes('authentication') || 
           errorDetails.toLowerCase().includes('invalid') ||
           errorDetails.toLowerCase().includes('key') ||

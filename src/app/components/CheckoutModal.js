@@ -65,6 +65,15 @@ export default function CheckoutModal({ service, onClose }) {
       const orderData = await response.json();
 
       if (!response.ok) {
+        // Log full error for debugging
+        console.error('Payment Order Creation Failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: orderData.error,
+          details: orderData.details,
+          troubleshooting: orderData.troubleshooting
+        });
+
         // Show detailed error message
         let errorMessage = orderData.details 
           ? `${orderData.error || 'Payment failed'}: ${orderData.details}`
@@ -79,7 +88,10 @@ export default function CheckoutModal({ service, onClose }) {
         if (orderData.missingVariables) {
           alert(`Configuration Error: ${errorMessage}\n\nPlease contact support or check your payment gateway configuration.`);
         } else if (orderData.details && orderData.details.includes('key not found')) {
-          alert(`PhonePe Authentication Error\n\n${errorMessage}\n\nThis usually means:\n• Merchant ID is incorrect\n• Salt Key doesn't match Merchant ID\n• Wrong environment (SANDBOX vs PRODUCTION)\n• Merchant account not activated\n\nPlease check your PhonePe credentials in Vercel environment variables.`);
+          alert(`PhonePe Authentication Error\n\n${errorMessage}\n\nThis usually means:\n• Client ID is incorrect\n• Client Secret doesn't match\n• Wrong environment (SANDBOX vs PRODUCTION)\n• Merchant account not activated\n\nPlease check your PhonePe credentials in Vercel environment variables.`);
+        } else if (response.status === 400 || orderData.error?.includes('400') || orderData.details?.includes('400')) {
+          // Special handling for 400 errors
+          alert(`Payment Setup Error (400)\n\n${errorMessage}\n\nIMPORTANT: This usually means your redirect URL is not whitelisted in PhonePe dashboard.\n\nPlease:\n1. Go to PhonePe Dashboard → Settings → Redirect URLs\n2. Add: https://abhishek-chaudhary.com/payment/success*\n3. Wait 5-10 minutes and try again\n\nCheck Vercel logs for more details.`);
         } else {
           alert(`Payment Error: ${errorMessage}`);
         }
