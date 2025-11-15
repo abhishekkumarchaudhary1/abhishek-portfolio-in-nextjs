@@ -133,6 +133,7 @@
       "price": "15000",
       "priceType": "project",
       "originalPrice": "20000",
+      "preRegistrationFee": "150",
       "features": [
         "Responsive Design",
         "Modern UI/UX",
@@ -150,6 +151,7 @@
       "price": "20000",
       "priceType": "project",
       "originalPrice": "25000",
+      "preRegistrationFee": "200",
       "features": [
         "RESTful API Development",
         "Database Design & Integration",
@@ -167,6 +169,7 @@
       "price": "30000",
       "priceType": "project",
       "originalPrice": "40000",
+      "preRegistrationFee": "300",
       "features": [
         "Frontend & Backend Development",
         "Database Integration",
@@ -184,6 +187,7 @@
       "price": "12000",
       "priceType": "project",
       "originalPrice": "15000",
+      "preRegistrationFee": "120",
       "features": [
         "RESTful API Design",
         "API Documentation",
@@ -201,6 +205,7 @@
       "price": "18000",
       "priceType": "project",
       "originalPrice": "22000",
+      "preRegistrationFee": "180",
       "features": [
         "UI/UX Redesign",
         "Performance Optimization",
@@ -218,6 +223,7 @@
       "price": "5000",
       "priceType": "hour",
       "originalPrice": "7000",
+      "preRegistrationFee": "50",
       "features": [
         "Technical Consultation",
         "Code Review",

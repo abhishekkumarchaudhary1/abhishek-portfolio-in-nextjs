@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { StandardCheckoutClient, Env, MetaInfo, StandardCheckoutPayRequest } from 'pg-sdk-node';
 import { randomUUID } from 'crypto';
+import { savePayment } from '../../utils/paymentStorage';
 
 /**
  * PhonePe Payment Order Creation using Official SDK
@@ -164,6 +165,27 @@ export async function POST(request) {
     }
 
     const paymentUrl = paymentResponse.redirectUrl;
+
+    // Save initial payment record with customer details
+    try {
+      const environment = process.env.PHONEPE_ENVIRONMENT || 'SANDBOX';
+      savePayment({
+        merchantTransactionId: merchantOrderId,
+        status: 'pending',
+        amount: amountInPaise,
+        serviceId: serviceId,
+        serviceName: serviceName,
+        customerName: customerDetails?.name,
+        customerEmail: customerDetails?.email,
+        customerPhone: customerDetails?.phone,
+        customerMessage: customerDetails?.message,
+        environment
+      });
+      console.log(`✅ Initial payment record saved: ${merchantOrderId}`);
+    } catch (error) {
+      console.error('⚠️  Error saving initial payment record:', error);
+      // Don't fail the request if payment record save fails
+    }
 
     return NextResponse.json({
       success: true,

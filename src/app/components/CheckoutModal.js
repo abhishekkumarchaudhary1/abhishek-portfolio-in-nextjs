@@ -55,7 +55,7 @@ export default function CheckoutModal({ service, onClose }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          amount: parseFloat(service.price) * 100, // Convert to paise
+          amount: parseFloat(service.preRegistrationFee || '150') * 100, // Convert to paise
           serviceId: service.id,
           serviceName: service.title,
           customerDetails: customerDetails
@@ -144,11 +144,19 @@ export default function CheckoutModal({ service, onClose }) {
             <div className="bg-indigo-50 rounded-lg p-4 mb-6">
               <h3 className="font-semibold text-gray-900 mb-2">{service.title}</h3>
               <p className="text-sm text-gray-700 mb-2">{service.description}</p>
-              <div className="flex items-baseline">
-                <span className="text-2xl font-bold text-indigo-600">₹{service.price}</span>
-                {service.priceType && (
-                  <span className="text-gray-500 ml-2 text-sm">/{service.priceType}</span>
-                )}
+              <div className="mb-2">
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-bold text-indigo-600">₹{service.price}</span>
+                  {service.priceType && (
+                    <span className="text-gray-500 ml-2 text-sm">/{service.priceType}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-600 mt-1">Service Price</p>
+              </div>
+              <div className="border-t border-indigo-200 pt-2 mt-2">
+                <div className="flex items-baseline">
+                  <span className="text-xl font-bold text-indigo-600">Pre-Registration Fee: ₹{service.preRegistrationFee || '150'}</span>
+                </div>
               </div>
             </div>
 
@@ -227,7 +235,7 @@ export default function CheckoutModal({ service, onClose }) {
                 whileHover={{ scale: isProcessing ? 1 : 1.02 }}
                 whileTap={{ scale: isProcessing ? 1 : 0.98 }}
               >
-                {isProcessing ? 'Processing...' : `Proceed to Pay ₹${service.price}`}
+                {isProcessing ? 'Processing...' : `Proceed to Pay ₹${service.preRegistrationFee || '150'}`}
               </motion.button>
             </div>
 

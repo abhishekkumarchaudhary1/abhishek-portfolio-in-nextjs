@@ -83,7 +83,7 @@ export default function Services() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  Hire Me / Proceed to Checkout
+                  Pre Register for ₹{service.preRegistrationFee || '150'}
                 </motion.button>
               </div>
             </motion.div>
