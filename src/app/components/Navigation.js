@@ -72,14 +72,17 @@ export default function Navigation() {
           {/* Logo/Name */}
           <motion.a 
             href="/#home" 
-            className="text-xl font-bold text-gray-900"
+            className="flex items-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
             onClick={(e) => handleNavClick(e, 'home')}
           >
-            {name.split(' ')[0]}
-            <span className="text-indigo-600">.</span>
+            <img 
+              src="/abhishekportfoliologowithwhitebg.svg" 
+              alt="Abhishek Kumar Chaudhary" 
+              className="h-18 w-auto"
+            />
           </motion.a>
           
           {/* Desktop Navigation */}
@@ -134,9 +137,10 @@ export default function Navigation() {
           
           {/* Mobile Menu Button */}
           <motion.button
-            className="md:hidden"
+            className="md:hidden p-2"
             onClick={toggleMenu}
             whileTap={{ scale: 0.9 }}
+            aria-label="Toggle menu"
           >
             <svg 
               className="w-6 h-6 text-gray-900" 

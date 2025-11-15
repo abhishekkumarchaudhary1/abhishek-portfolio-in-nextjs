@@ -24,10 +24,13 @@ export default function Footer() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <h3 className="text-xl font-bold mb-4">
-              {name.split(' ')[0]}
-              <span className="text-indigo-400">.</span>
-            </h3>
+            <div className="mb-4">
+              <img 
+                src="/abhishekportfoliologowithwhitebg.svg" 
+                alt="Abhishek Kumar Chaudhary" 
+                className="h-12 w-auto"
+              />
+            </div>
             <p className="text-gray-400 mb-6 max-w-xs">
               Creating elegant solutions to complex problems through code and design.
             </p>
