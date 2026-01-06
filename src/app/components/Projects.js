@@ -91,14 +91,37 @@ export default function Projects() {
               transition={{ duration: 0.5, delay: index * 0.1 }}
               whileHover={{ y: -10 }}
             >
-              <div className="relative h-64 w-full">
-                <Image 
-                  src={project.image} 
-                  alt={project.title}
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                />
+              <div className="max-h-80 w-full overflow-y-auto bg-gray-100 rounded-t-lg">
+                {project.images && project.images.length > 0 ? (
+                  <div className="flex flex-col gap-4 p-3">
+                    {project.images.map((img, imgIndex) => (
+                      <div key={imgIndex} className="flex flex-col gap-2">
+                        <h4 className="text-sm font-semibold text-gray-700 px-1">
+                          Screen {imgIndex + 1}
+                        </h4>
+                        <Image 
+                          src={img} 
+                          alt={`${project.title} - Screen ${imgIndex + 1}`}
+                          width={800}
+                          height={1600}
+                          className="w-full h-auto rounded"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          unoptimized
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Image 
+                    src={project.image} 
+                    alt={project.title}
+                    width={800}
+                    height={1600}
+                    className="w-full h-auto"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    unoptimized
+                  />
+                )}
               </div>
               <div className="p-6">
                 <h3 className="font-bold text-xl mb-2 text-gray-900">{project.title}</h3>

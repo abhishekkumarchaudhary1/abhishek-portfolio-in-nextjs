@@ -8,8 +8,9 @@
     "bio": "Creating elegant solutions to complex problems through code and design. Let's build something amazing together.",
     "github": "https://github.com/abhishekkumarchaudhary1",
     "linkedin": "https://www.linkedin.com/in/abhishek-kumar-chaudhary-516431164",
+    "website": "https://www.abhishek-chaudhary.com",
     "buyMeACoffee": "https://buymeacoffee.com/yourusername",
-    "profileImage": "/profile-image.jpg"
+    "profileImage": "https://avatars.githubusercontent.com/u/93211705?v=4"
   },
   "education": [
     {
@@ -28,7 +29,26 @@
       "title": "Software Developer",
       "company": "IISERVZ",
       "years": "Sept 2024 - Present",
-      "description": "Developing and maintaining web applications using React, Next.js, .NET, and SQL Server."
+      "description": "Full-stack development role focusing on web applications and API development using modern technologies.",
+      "responsibilities": [
+        "Developed and maintained responsive web applications using React.js and Next.js, improving user engagement by 40%",
+        "Built company's official website (iiservz.com) from scratch using Next.js, implementing SEO best practices resulting in 60% increase in organic traffic",
+        "Designed and implemented RESTful APIs using .NET 9 and MS SQL Server for HR2Grow attendance system, serving 500+ employees",
+        "Collaborated with cross-functional teams to deliver projects on time and within budget",
+        "Implemented JWT-based authentication and authorization systems ensuring secure data access",
+        "Optimized database queries resulting in 25% improvement in application performance"
+      ],
+      "technologies": [
+        "React",
+        "Next.js",
+        ".NET",
+        "C#",
+        "SQL Server",
+        "MongoDB",
+        "REST API",
+        "JWT",
+        "Cloudinary"
+      ]
     }
   ],
   "skills": {
@@ -36,95 +56,181 @@
       {
         "title": "Frontend Development",
         "skills": [
-          { "name": "HTML5", "level": 90 },
-          { "name": "CSS3/SASS", "level": 85 },
-          { "name": "JavaScript (ES6+)", "level": 90 },
-          { "name": "React.js", "level": 85 },
-          { "name": "Next.js", "level": 80 },
-          { "name": "Tailwind CSS", "level": 85 },
-          { "name": "Responsive Design", "level": 90 }
+          {
+            "name": "HTML5",
+            "level": 90
+          },
+          {
+            "name": "CSS3/SASS",
+            "level": 85
+          },
+          {
+            "name": "JavaScript (ES6+)",
+            "level": 90
+          },
+          {
+            "name": "React.js",
+            "level": 85
+          },
+          {
+            "name": "Next.js",
+            "level": 80
+          },
+          {
+            "name": "Tailwind CSS",
+            "level": 85
+          },
+          {
+            "name": "Responsive Design",
+            "level": 90
+          }
         ]
       },
       {
         "title": "Backend Development",
         "skills": [
-          { "name": "Node.js", "level": 80 },
-          { "name": ".NET", "level": 82 },
-          { "name": "Express.js", "level": 75 },
-          { "name": "RESTful APIs", "level": 85 },
-          { "name": "MongoDB", "level": 70 },
-          { "name": "SQL", "level": 65 },
-          { "name": "Firebase", "level": 75 }
+          {
+            "name": "Node.js",
+            "level": 80
+          },
+          {
+            "name": ".NET",
+            "level": 82
+          },
+          {
+            "name": "Express.js",
+            "level": 75
+          },
+          {
+            "name": "RESTful APIs",
+            "level": 85
+          },
+          {
+            "name": "MongoDB",
+            "level": 70
+          },
+          {
+            "name": "SQL",
+            "level": 65
+          },
+          {
+            "name": "Firebase",
+            "level": 75
+          }
         ]
       },
       {
         "title": "Tools & Technologies",
         "skills": [
-          { "name": "Git/GitHub", "level": 85 },
-          { "name": "Postman", "level": 65 },
-          { "name": "VS Code", "level": 90 }
+          {
+            "name": "Git/GitHub",
+            "level": 85
+          },
+          {
+            "name": "Postman",
+            "level": 65
+          },
+          {
+            "name": "VS Code",
+            "level": 90
+          }
         ]
       }
     ],
     "otherSkills": [
-      "UI/UX Design", "Responsive Design", "Performance Optimization", 
-      "Accessibility", "SEO", "Progressive Web Apps", "TypeScript",
-      "Web Animation", "Cross-Browser Compatibility", "Mobile Development", "C#"
+      "UI/UX Design",
+      "Responsive Design",
+      "Performance Optimization",
+      "Accessibility",
+      "SEO",
+      "Progressive Web Apps",
+      "TypeScript",
+      "Web Animation",
+      "Cross-Browser Compatibility",
+      "Mobile Development",
+      "C#"
     ]
   },
   "projects": [
     {
       "id": 1,
-      "title": "Expense Tracker",
-      "description": "A simple expense tracker app built with React and Tailwind CSS. It allows you to add, edit, and delete expenses, and view the total expenses.",
-      "image": "/expense-tracker.png",
-      "technologies": ["Next.js", "React", "Tailwind CSS", "Framer Motion", "Nodemailer"],
-      "category": "fullstack",
-      "link": "https://expense-tracker-mu-three-13.vercel.app/",
-      "sourceCode": "#"
+      "title": "Portfolio Mobile App with Resume Builder",
+      "description": "React Native mobile application featuring a portfolio showcase and custom resume builder with PDF export. Users can create, edit, and export professional resumes with customizable sections for experience, education, projects, and skills.",
+      "image": "/portfolio-mobile-screen1.jpg",
+      "images": [
+        "/portfolio-mobile-screen1.jpg",
+        "/portfolio-mobile-screen2.jpg"
+      ],
+      "technologies": [
+        "React Native",
+        "TypeScript",
+        "Expo",
+        "React Navigation",
+        "expo-print",
+        "expo-sharing"
+      ],
+      "category": "mobile",
+      "link": "https://expo.dev/artifacts/eas/bALKvq9K92Q8x8hFoae7C1.apk",
+      "sourceCode": "https://github.com/abhishekkumarchaudhary1/abhishekportfoliomobileapp"
     },
     {
       "id": 2,
-      "title": "Personal Portfolio Website",
-      "description": "A modern, responsive portfolio website built with Next.js and Tailwind CSS, featuring smooth animations and a contact form with email functionality.",
-      "image": "/portfolio.png",
-      "technologies": ["Next.js", "React", "Tailwind CSS", "Framer Motion", "Nodemailer"],
-      "category": "frontend",
-      "link": "https://abhishek-chaudhary.com/",
-      "sourceCode": "#"
+      "title": "Patient Assist",
+      "description": "Medical records management web application for doctors and patients. Features include doctor/patient authentication, diagnostic record management, patient information tracking, and PDF/Excel export capabilities.",
+      "image": "/patient-assist.png",
+      "technologies": [
+        "Next.js",
+        "React",
+        "MongoDB Atlas",
+        "Cloudinary",
+        "JWT",
+        "Tailwind CSS",
+        "jsPDF",
+        "xlsx"
+      ],
+      "category": "fullstack",
+      "link": "https://patient-assist.vercel.app/",
+      "sourceCode": "https://github.com/jhaamisha30/patient-assist"
     },
     {
       "id": 3,
-      "title": "IISERVZ Website",
-      "description": "Built my firm's official website from scratch using Next.js for a fast, SEO friendly frontend.",
-      "image": "/iiservz.png",
-      "technologies": ["Next.js", "React", "Tailwind CSS", "SEO Optimization"],
+      "title": "Personal Portfolio Website",
+      "description": "A modern, responsive portfolio website built with Next.js and Tailwind CSS, featuring smooth animations and a contact form with email functionality.",
+      "image": "/portfolio.png",
+      "technologies": [
+        "Next.js",
+        "React",
+        "Tailwind CSS",
+        "Framer Motion",
+        "Nodemailer"
+      ],
       "category": "frontend",
-      "link": "https://www.iiservz.com/",
-      "sourceCode": "#"
+      "link": "https://abhishek-chaudhary.com/",
+      "sourceCode": "https://github.com/abhishekkumarchaudhary1/abhishek-portfolio-in-nextjs"
     },
     {
       "id": 4,
-      "title": "HR2Grow Attendance API",
-      "description": "Designed and implemented an API structure in .NET 9 with MS SQL to fetch employee attendance using client IDs.",
-      "image": "/hr2grow.png",
-      "technologies": [".NET 9", "MS SQL", "REST API", "C#"],
-      "category": "backend",
-      "link": "#",
-      "sourceCode": "#"
-    },
-    {
-      "id": 5,
-      "title": "TaskDoc - Document Management App",
-      "description": "Full-stack MERN app with React, Redux Toolkit, Node.js, Express, and MongoDB. Features include document/task management, JWT-based auth, CRUD APIs, and file uploads via Cloudinary.",
-      "image": "/taskdoc.png",
-      "technologies": ["React", "Redux Toolkit", "Node.js", "Express", "MongoDB", "JWT", "Cloudinary"],
+      "title": "Expense Tracker",
+      "description": "A simple expense tracker app built with React and Tailwind CSS. It allows you to add, edit, and delete expenses, and view the total expenses.",
+      "image": "/expense-tracker.png",
+      "technologies": [
+        "Next.js",
+        "React",
+        "Tailwind CSS",
+        "Framer Motion",
+        "Nodemailer"
+      ],
       "category": "fullstack",
-      "link": "#",
-      "sourceCode": "#"
+      "link": "https://expense-tracker-mu-three-13.vercel.app/",
+      "sourceCode": "https://github.com/abhishekkumarchaudhary1/expense-tracker"
     }
   ],
-  "roles": ["Frontend Developer", "Backend Developer", "API Tester", "Problem Solver"],
+  "roles": [
+    "Frontend Developer",
+    "Backend Developer",
+    "API Tester",
+    "Problem Solver"
+  ],
   "services": [
     {
       "id": 1,
@@ -235,4 +341,4 @@
       "icon": "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
     }
   ]
-} 
+}
