@@ -541,7 +541,7 @@ async function generatePaymentReceiptPDF(receiptData) {
     drawLabelValue('Transaction ID:', transactionId || 'N/A', true);
     drawLabelValue('Merchant Order ID:', merchantTransactionId || 'N/A', true);
     drawLabelValue('Payment Date:', paymentDate);
-    drawLabelValue('Payment Status:', '✅ Completed', false, true);
+    drawLabelValue('Payment Status:', 'COMPLETED', false, true);
     
     yPos -= 10;
     
