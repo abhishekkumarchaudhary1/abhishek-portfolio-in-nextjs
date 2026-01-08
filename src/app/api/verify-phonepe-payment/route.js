@@ -320,8 +320,18 @@ export async function POST(request) {
     // If payment is successful, send notifications (as fallback if webhook didn't trigger)
     if (isSuccess) {
       try {
+        console.log('📧 Payment successful - Checking for notification sending...');
+        
         // Get payment record to retrieve customer details
         const localPayment = getPayment(merchantTransactionId);
+        
+        console.log('📋 Local payment record:', {
+          found: !!localPayment,
+          hasCustomerName: !!localPayment?.customerName,
+          hasCustomerEmail: !!localPayment?.customerEmail,
+          hasServiceName: !!localPayment?.serviceName,
+          emailsSent: localPayment?.emailsSent
+        });
         
         if (localPayment) {
           const customerName = localPayment.customerName;
@@ -331,34 +341,68 @@ export async function POST(request) {
           const customerMessage = localPayment.customerMessage;
           
           // Check if emails were already sent (to avoid duplicates)
+          // For now, we'll send emails on verification to ensure they're sent
+          // In production with webhooks, this acts as a fallback
           const emailsSent = localPayment.emailsSent || false;
           
-          if (!emailsSent && customerEmail && customerName) {
+          console.log('📧 Email sending check:', {
+            emailsSent,
+            hasCustomerEmail: !!customerEmail,
+            hasCustomerName: !!customerName,
+            willSend: customerEmail && customerName
+          });
+          
+          // Send emails if we have customer details (even if marked as sent, to ensure delivery)
+          if (customerEmail && customerName) {
             console.log('📧 Sending payment notification emails (verification fallback)...');
-            
-            // Send customer confirmation email
-            await sendPaymentSuccessEmail(customerEmail, customerName, {
-              transactionId: finalTransactionId,
-              merchantTransactionId: merchantTransactionId,
-              amount: orderStatus.amount,
-              serviceName: serviceName
+            console.log('📧 Customer details:', {
+              name: customerName,
+              email: customerEmail,
+              phone: customerPhone,
+              service: serviceName
             });
             
-            // Send admin notification email
-            await sendAdminPaymentNotification({
-              customerName,
-              customerEmail,
-              customerPhone,
-              transactionId: finalTransactionId,
-              merchantTransactionId: merchantTransactionId,
-              amount: orderStatus.amount,
-              serviceName: serviceName,
-              message: customerMessage
-            });
-            
-            // Mark emails as sent
-            updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
-            console.log('✅ Payment notification emails sent successfully');
+            try {
+              console.log('📧 Attempting to send customer email to:', customerEmail);
+              // Send customer confirmation email
+              const customerEmailResult = await sendPaymentSuccessEmail(customerEmail, customerName, {
+                transactionId: finalTransactionId,
+                merchantTransactionId: merchantTransactionId,
+                amount: orderStatus.amount,
+                serviceName: serviceName
+              });
+              console.log('📧 Customer email sent:', customerEmailResult ? 'SUCCESS' : 'FAILED');
+              
+              console.log('📧 Attempting to send admin notification emails...');
+              // Send admin notification email
+              const adminEmailResult = await sendAdminPaymentNotification({
+                customerName,
+                customerEmail,
+                customerPhone,
+                transactionId: finalTransactionId,
+                merchantTransactionId: merchantTransactionId,
+                amount: orderStatus.amount,
+                serviceName: serviceName,
+                message: customerMessage
+              });
+              console.log('📧 Admin email sent:', adminEmailResult ? 'SUCCESS' : 'FAILED');
+              
+              // Mark emails as sent only if both were successful
+              if (customerEmailResult && adminEmailResult) {
+                updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
+                console.log('✅ Payment notification emails sent successfully and marked as sent');
+              } else {
+                console.log('⚠️  Some emails failed to send, will retry on next verification');
+              }
+            } catch (emailError) {
+              console.error('❌ Error sending emails:', emailError);
+              console.error('❌ Email error details:', {
+                message: emailError.message,
+                stack: emailError.stack,
+                name: emailError.name
+              });
+              // Don't throw - we want verification to succeed even if emails fail
+            }
             
             // Send SMS notification if Twilio is configured
             if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
@@ -399,9 +443,15 @@ export async function POST(request) {
             }
           } else if (emailsSent) {
             console.log('ℹ️  Emails already sent for this payment (skipping to avoid duplicates)');
+          } else {
+            console.log('⚠️  Cannot send emails - missing customer details:', {
+              hasEmail: !!customerEmail,
+              hasName: !!customerName
+            });
           }
         } else {
           console.log('⚠️  No local payment record found - cannot send notifications');
+          console.log('⚠️  Merchant Transaction ID used:', merchantTransactionId);
         }
       } catch (notificationError) {
         console.error('⚠️  Error sending payment notifications:', notificationError);
