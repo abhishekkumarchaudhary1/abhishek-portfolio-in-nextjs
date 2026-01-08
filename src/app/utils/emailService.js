@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import PDFDocument from 'pdfkit';
+import PdfPrinter from 'pdfmake';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -450,145 +450,221 @@ async function generatePaymentReceiptPDF(receiptData) {
       const fileName = `receipt_${merchantTransactionId || transactionId}_${Date.now()}.pdf`;
       const filePath = path.join(tempDir, fileName);
       
-      // Create PDF document
-      const doc = new PDFDocument({ 
-        size: 'A4',
-        margin: 50,
-        info: {
-          Title: 'Payment Receipt',
-          Author: 'Abhishek Kumar Chaudhary',
-          Subject: 'Pre-Registration Payment Receipt'
+      // Define fonts (pdfmake uses built-in fonts - no external files needed)
+      const fonts = {
+        Roboto: {
+          normal: 'Helvetica',
+          bold: 'Helvetica-Bold',
+          italics: 'Helvetica-Oblique',
+          bolditalics: 'Helvetica-BoldOblique'
         }
-      });
+      };
       
-      // Pipe to file
+      const printer = new PdfPrinter(fonts);
+      
+      // Define PDF document
+      const docDefinition = {
+        pageSize: 'A4',
+        pageMargins: [50, 50, 50, 50],
+        info: {
+          title: 'Payment Receipt',
+          author: 'Abhishek Kumar Chaudhary',
+          subject: 'Pre-Registration Payment Receipt'
+        },
+        content: [
+          // Header
+          {
+            text: 'PAYMENT RECEIPT',
+            style: 'header',
+            alignment: 'center',
+            margin: [0, 0, 0, 10]
+          },
+          {
+            text: 'Pre-Registration Payment Confirmation',
+            style: 'subheader',
+            alignment: 'center',
+            margin: [0, 0, 0, 20]
+          },
+          {
+            canvas: [
+              {
+                type: 'line',
+                x1: 0,
+                y1: 0,
+                x2: 500,
+                y2: 0,
+                lineWidth: 2,
+                lineColor: '#667eea'
+              }
+            ],
+            margin: [0, 0, 0, 20]
+          },
+          
+          // Receipt Details
+          {
+            columns: [
+              {
+                width: '*',
+                text: [
+                  { text: 'Customer Name:\n', style: 'label' },
+                  { text: 'Service:\n', style: 'label' },
+                  { text: 'Transaction ID:\n', style: 'label' },
+                  { text: 'Merchant Order ID:\n', style: 'label' },
+                  { text: 'Payment Date:\n', style: 'label' },
+                  { text: 'Payment Status:\n', style: 'label' }
+                ]
+              },
+              {
+                width: 'auto',
+                text: [
+                  { text: `${customerName || 'N/A'}\n`, style: 'value' },
+                  { text: `${serviceName || 'N/A'}\n`, style: 'value' },
+                  { text: `${transactionId || 'N/A'}\n`, style: 'valueMonospace' },
+                  { text: `${merchantTransactionId || 'N/A'}\n`, style: 'valueMonospace' },
+                  { text: `${paymentDate}\n`, style: 'value' },
+                  { text: '✅ Completed\n', style: 'status' }
+                ],
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 0, 0, 20]
+          },
+          
+          // Divider
+          {
+            canvas: [
+              {
+                type: 'line',
+                x1: 0,
+                y1: 0,
+                x2: 500,
+                y2: 0,
+                lineWidth: 1,
+                lineColor: '#eee'
+              }
+            ],
+            margin: [0, 0, 0, 20]
+          },
+          
+          // Total Amount
+          {
+            columns: [
+              {
+                width: '*',
+                text: 'Total Amount Paid:',
+                style: 'totalLabel',
+                bold: true
+              },
+              {
+                width: 'auto',
+                text: `₹${amount}`,
+                style: 'totalValue',
+                bold: true,
+                alignment: 'right'
+              }
+            ],
+            margin: [0, 0, 0, customerMessage ? 30 : 0]
+          },
+          
+          // Project Details (if available)
+          ...(customerMessage ? [
+            {
+              canvas: [
+                {
+                  type: 'line',
+                  x1: 0,
+                  y1: 0,
+                  x2: 500,
+                  y2: 0,
+                  lineWidth: 2,
+                  lineColor: '#667eea'
+                }
+              ],
+              margin: [0, 20, 0, 20]
+            },
+            {
+              text: 'Project Details',
+              style: 'sectionHeader',
+              margin: [0, 0, 0, 10]
+            },
+            {
+              text: customerMessage,
+              style: 'projectDetails',
+              margin: [0, 0, 0, 20]
+            }
+          ] : [])
+        ],
+        styles: {
+          header: {
+            fontSize: 24,
+            bold: true,
+            color: '#667eea'
+          },
+          subheader: {
+            fontSize: 12,
+            color: '#666'
+          },
+          label: {
+            fontSize: 11,
+            color: '#666',
+            margin: [0, 5, 0, 5]
+          },
+          value: {
+            fontSize: 11,
+            color: '#333',
+            margin: [0, 5, 0, 5]
+          },
+          valueMonospace: {
+            fontSize: 10,
+            color: '#333',
+            margin: [0, 5, 0, 5]
+          },
+          status: {
+            fontSize: 11,
+            color: '#10b981',
+            bold: true,
+            margin: [0, 5, 0, 5]
+          },
+          totalLabel: {
+            fontSize: 16,
+            color: '#667eea'
+          },
+          totalValue: {
+            fontSize: 16,
+            color: '#667eea'
+          },
+          sectionHeader: {
+            fontSize: 14,
+            bold: true,
+            color: '#667eea'
+          },
+          projectDetails: {
+            fontSize: 11,
+            color: '#333',
+            lineHeight: 1.5
+          }
+        },
+        defaultStyle: {
+          font: 'Roboto'
+        },
+        footer: function(currentPage, pageCount) {
+          return {
+            text: [
+              { text: 'This is a computer-generated receipt.\n', fontSize: 9, color: '#999', alignment: 'center' },
+              { text: 'For any queries, please contact: support@abhishek-chaudhary.com', fontSize: 9, color: '#999', alignment: 'center' }
+            ],
+            margin: [50, 20, 50, 0]
+          };
+        }
+      };
+      
+      // Generate PDF
+      const pdfDoc = printer.createPdfKitDocument(docDefinition);
+      
+      // Write to file
       const stream = fs.createWriteStream(filePath);
-      doc.pipe(stream);
-      
-      // Header
-      doc.fontSize(24)
-         .fillColor('#667eea')
-         .text('PAYMENT RECEIPT', { align: 'center' });
-      
-      doc.moveDown(0.5);
-      doc.fontSize(12)
-         .fillColor('#666')
-         .text('Pre-Registration Payment Confirmation', { align: 'center' });
-      
-      doc.moveDown(1);
-      doc.strokeColor('#667eea')
-         .lineWidth(2)
-         .moveTo(50, doc.y)
-         .lineTo(550, doc.y)
-         .stroke();
-      
-      doc.moveDown(1.5);
-      
-      // Receipt Details
-      doc.fontSize(11)
-         .fillColor('#333');
-      
-      const leftMargin = 50;
-      const rightMargin = 350;
-      const lineHeight = 20;
-      let yPos = doc.y;
-      
-      // Customer Name
-      doc.fontSize(11)
-         .fillColor('#666')
-         .text('Customer Name:', leftMargin, yPos);
-      doc.fillColor('#333')
-         .text(customerName || 'N/A', rightMargin, yPos);
-      yPos += lineHeight;
-      
-      // Service
-      doc.fillColor('#666')
-         .text('Service:', leftMargin, yPos);
-      doc.fillColor('#333')
-         .text(serviceName || 'N/A', rightMargin, yPos);
-      yPos += lineHeight;
-      
-      // Transaction ID
-      doc.fillColor('#666')
-         .text('Transaction ID:', leftMargin, yPos);
-      doc.fillColor('#333')
-         .fontSize(10)
-         .text(transactionId || 'N/A', rightMargin, yPos);
-      yPos += lineHeight;
-      
-      // Merchant Order ID
-      doc.fontSize(11)
-         .fillColor('#666')
-         .text('Merchant Order ID:', leftMargin, yPos);
-      doc.fillColor('#333')
-         .fontSize(10)
-         .text(merchantTransactionId || 'N/A', rightMargin, yPos);
-      yPos += lineHeight;
-      
-      // Payment Date
-      doc.fontSize(11)
-         .fillColor('#666')
-         .text('Payment Date:', leftMargin, yPos);
-      doc.fillColor('#333')
-         .text(paymentDate, rightMargin, yPos);
-      yPos += lineHeight;
-      
-      // Payment Status
-      doc.fillColor('#666')
-         .text('Payment Status:', leftMargin, yPos);
-      doc.fillColor('#10b981')
-         .text('✅ Completed', rightMargin, yPos);
-      yPos += lineHeight + 10;
-      
-      // Divider
-      doc.strokeColor('#eee')
-         .lineWidth(1)
-         .moveTo(leftMargin, yPos)
-         .lineTo(550, yPos)
-         .stroke();
-      
-      yPos += 15;
-      
-      // Total Amount
-      doc.fontSize(16)
-         .fillColor('#667eea')
-         .text('Total Amount Paid:', leftMargin, yPos, { continued: false });
-      doc.fontSize(16)
-         .fillColor('#667eea')
-         .text(`₹${amount}`, rightMargin, yPos);
-      
-      // Project Details (if available)
-      if (customerMessage) {
-        yPos += 40;
-        doc.strokeColor('#667eea')
-           .lineWidth(2)
-           .moveTo(50, yPos)
-           .lineTo(550, yPos)
-           .stroke();
-        
-        yPos += 20;
-        doc.fontSize(14)
-           .fillColor('#667eea')
-           .text('Project Details', leftMargin, yPos);
-        
-        yPos += 20;
-        doc.fontSize(11)
-           .fillColor('#333')
-           .text(customerMessage, leftMargin, yPos, {
-             width: 500,
-             align: 'left'
-           });
-      }
-      
-      // Footer
-      const footerY = 750;
-      doc.fontSize(9)
-         .fillColor('#999')
-         .text('This is a computer-generated receipt.', 50, footerY, { align: 'center', width: 500 });
-      doc.text('For any queries, please contact: support@abhishek-chaudhary.com', 50, footerY + 15, { align: 'center', width: 500 });
-      
-      // Finalize PDF
-      doc.end();
+      pdfDoc.pipe(stream);
+      pdfDoc.end();
       
       stream.on('finish', () => {
         resolve(filePath);
