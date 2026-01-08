@@ -469,18 +469,10 @@ async function generatePaymentReceiptPDF(receiptData) {
     
     let yPos = height - 50; // Start from top with margin
     
-    // Header
-    page.drawText('PAYMENT RECEIPT', {
-      x: 50,
-      y: yPos,
-      size: 24,
-      font: helveticaBoldFont,
-      color: primaryColor,
-    });
-    
-    // Center the header
-    const headerWidth = helveticaBoldFont.widthOfTextAtSize('PAYMENT RECEIPT', 24);
-    page.drawText('PAYMENT RECEIPT', {
+    // Header - centered
+    const headerText = 'PAYMENT RECEIPT';
+    const headerWidth = helveticaBoldFont.widthOfTextAtSize(headerText, 24);
+    page.drawText(headerText, {
       x: (width - headerWidth) / 2,
       y: yPos,
       size: 24,
