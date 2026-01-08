@@ -177,12 +177,26 @@ export async function POST(request) {
     console.log('📍 Base URL source:', isDevelopment && requestOrigin ? 'Request Origin (Development)' : 'Environment Variable (Production)');
 
     // Create meta info with customer details (optional)
+    // Note: PhonePe only supports udf1-udf5, so we encode customerMessage in udf5 along with serviceId
     const metaInfoBuilder = MetaInfo.builder();
     if (customerDetails?.name) metaInfoBuilder.udf1(customerDetails.name);
     if (customerDetails?.email) metaInfoBuilder.udf2(customerDetails.email);
     if (customerDetails?.phone) metaInfoBuilder.udf3(customerDetails.phone);
     if (serviceName) metaInfoBuilder.udf4(serviceName);
-    if (serviceId) metaInfoBuilder.udf5(serviceId.toString());
+    
+    // Encode customerMessage in udf5: format is "serviceId|base64EncodedMessage" or just "serviceId" if no message
+    let udf5Value = serviceId ? serviceId.toString() : '';
+    if (customerDetails?.message && customerDetails.message.trim()) {
+      try {
+        // Encode message in base64 to preserve special characters
+        const encodedMessage = Buffer.from(customerDetails.message).toString('base64');
+        udf5Value = `${udf5Value}|${encodedMessage}`;
+      } catch (error) {
+        console.warn('Failed to encode customerMessage, storing serviceId only:', error);
+      }
+    }
+    if (udf5Value) metaInfoBuilder.udf5(udf5Value);
+    
     const metaInfo = metaInfoBuilder.build();
 
     // Create payment request using SDK

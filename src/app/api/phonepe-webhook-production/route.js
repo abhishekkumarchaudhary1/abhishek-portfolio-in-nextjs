@@ -264,7 +264,25 @@ async function handlePaymentSuccess(data, environment) {
     const customerEmail = metaInfo.udf2 || data.customerEmail || data.email;
     const customerPhone = metaInfo.udf3 || data.customerPhone || data.phone;
     const serviceName = metaInfo.udf4 || data.serviceName;
-    const serviceId = metaInfo.udf5 || data.serviceId;
+    
+    // Extract serviceId and customerMessage from udf5 (format: "serviceId|base64EncodedMessage" or just "serviceId")
+    let serviceId = null;
+    let customerMessageFromMeta = null;
+    if (metaInfo.udf5) {
+      const udf5Parts = metaInfo.udf5.split('|');
+      serviceId = udf5Parts[0] || data.serviceId;
+      if (udf5Parts.length > 1 && udf5Parts[1]) {
+        try {
+          // Decode base64 encoded message
+          customerMessageFromMeta = Buffer.from(udf5Parts[1], 'base64').toString('utf-8');
+          console.log(`[${environment}] ✅ Decoded customerMessage from metaInfo (${customerMessageFromMeta.length} chars)`);
+        } catch (error) {
+          console.warn(`[${environment}] ⚠️  Failed to decode customerMessage from metaInfo:`, error);
+        }
+      }
+    } else {
+      serviceId = data.serviceId;
+    }
     
     console.log(`[${environment}] Extracted payment details:`, {
       transactionId,
@@ -296,9 +314,17 @@ async function handlePaymentSuccess(data, environment) {
     const finalCustomerPhone = customerPhone || payment?.customerPhone || data.customerPhone || data.phone;
     const finalServiceName = serviceName || payment?.serviceName || data.serviceName;
     const finalServiceId = serviceId || payment?.serviceId || data.serviceId;
-    const customerMessage = payment?.customerMessage || data.message || '';
+    // Prioritize customerMessage from metaInfo (webhook), then payment record, then webhook data
+    const customerMessage = customerMessageFromMeta || payment?.customerMessage || data.message || '';
     
     console.log(`[${environment}] 📝 Customer message for email:`, customerMessage ? `Present (${customerMessage.length} chars)` : 'Missing/Empty');
+    if (customerMessageFromMeta) {
+      console.log(`[${environment}] ✅ Customer message retrieved from PhonePe metaInfo`);
+    } else if (payment?.customerMessage) {
+      console.log(`[${environment}] ✅ Customer message retrieved from payment record`);
+    } else {
+      console.log(`[${environment}] ⚠️  Customer message not found in metaInfo or payment record`);
+    }
 
     // Update or create payment record
     const paymentData = {
