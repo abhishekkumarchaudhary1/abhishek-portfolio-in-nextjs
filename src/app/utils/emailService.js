@@ -46,17 +46,30 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
         <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
             .success-icon { font-size: 48px; margin-bottom: 20px; }
             .details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; align-items: flex-start; }
             .detail-row:last-child { border-bottom: none; }
-            .label { font-weight: bold; color: #666; }
-            .value { color: #333; }
+            .label { font-weight: bold; color: #666; min-width: 140px; flex-shrink: 0; }
+            .value { color: #333; word-break: break-all; word-wrap: break-word; text-align: right; flex: 1; }
+            .receipt { background: white; border: 2px solid #667eea; border-radius: 8px; padding: 25px; margin: 20px 0; }
+            .receipt-header { text-align: center; border-bottom: 2px solid #667eea; padding-bottom: 15px; margin-bottom: 20px; }
+            .receipt-header h2 { margin: 0; color: #667eea; font-size: 24px; }
+            .receipt-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }
+            .receipt-row:last-child { border-bottom: none; border-top: 2px solid #667eea; margin-top: 10px; padding-top: 15px; }
+            .receipt-label { font-weight: bold; color: #666; min-width: 150px; }
+            .receipt-value { color: #333; word-break: break-all; word-wrap: break-word; text-align: right; flex: 1; }
+            .receipt-total { font-size: 18px; font-weight: bold; color: #667eea; }
             .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 10px !important; }
+              .detail-row, .receipt-row { flex-direction: column; }
+              .value, .receipt-value { text-align: left !important; margin-top: 5px; }
+            }
           </style>
         </head>
         <body>
@@ -69,22 +82,37 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
               <p>Dear ${customerName},</p>
               <p>Thank you for your pre-registration payment. Your payment has been successfully processed.</p>
               
-              <div class="details">
-                <div class="detail-row">
-                  <span class="label">Service:</span>
-                  <span class="value">${serviceName || 'N/A'}</span>
+              <p style="margin-top: 25px; margin-bottom: 15px;"><strong>Below is the payment receipt of your pre-registration:</strong></p>
+              
+              <div class="receipt">
+                <div class="receipt-header">
+                  <h2>PAYMENT RECEIPT</h2>
+                  <p style="margin: 5px 0; color: #666; font-size: 14px;">Pre-Registration Payment Confirmation</p>
                 </div>
-                <div class="detail-row">
-                  <span class="label">Amount Paid:</span>
-                  <span class="value">₹${amountInRupees}</span>
+                
+                <div class="receipt-row">
+                  <span class="receipt-label">Service:</span>
+                  <span class="receipt-value">${serviceName || 'N/A'}</span>
                 </div>
-                <div class="detail-row">
-                  <span class="label">Transaction ID:</span>
-                  <span class="value">${transactionId || merchantTransactionId || 'N/A'}</span>
+                <div class="receipt-row">
+                  <span class="receipt-label">Transaction ID:</span>
+                  <span class="receipt-value" style="font-family: monospace; font-size: 13px;">${transactionId || merchantTransactionId || 'N/A'}</span>
                 </div>
-                <div class="detail-row">
-                  <span class="label">Payment Date:</span>
-                  <span class="value">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</span>
+                <div class="receipt-row">
+                  <span class="receipt-label">Merchant Order ID:</span>
+                  <span class="receipt-value" style="font-family: monospace; font-size: 13px;">${merchantTransactionId || 'N/A'}</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="receipt-label">Payment Date:</span>
+                  <span class="receipt-value">${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'long', timeStyle: 'short' })}</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="receipt-label">Payment Status:</span>
+                  <span class="receipt-value" style="color: #10b981; font-weight: bold;">✅ Completed</span>
+                </div>
+                <div class="receipt-row">
+                  <span class="receipt-label receipt-total">Total Amount Paid:</span>
+                  <span class="receipt-value receipt-total">₹${amountInRupees}</span>
                 </div>
               </div>
 
@@ -92,6 +120,10 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
               <p>Your pre-registration has been confirmed. We will contact you shortly to discuss your project requirements and proceed with the service.</p>
               
               <p>If you have any questions, please feel free to reach out to us.</p>
+              
+              <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #667eea; border-radius: 4px;">
+                <strong>Note:</strong> Please keep this receipt for your records. You can use the Transaction ID for any payment-related queries.
+              </p>
               
               <div class="footer">
                 <p>Best regards,<br>Abhishek Kumar Chaudhary</p>
@@ -109,15 +141,28 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
         
         Thank you for your pre-registration payment. Your payment has been successfully processed.
         
+        Below is the payment receipt of your pre-registration:
+        
+        ============================================
+        PAYMENT RECEIPT
+        Pre-Registration Payment Confirmation
+        ============================================
+        
         Service: ${serviceName || 'N/A'}
-        Amount Paid: ₹${amountInRupees}
         Transaction ID: ${transactionId || merchantTransactionId || 'N/A'}
-        Payment Date: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+        Merchant Order ID: ${merchantTransactionId || 'N/A'}
+        Payment Date: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'long', timeStyle: 'short' })}
+        Payment Status: ✅ Completed
+        Total Amount Paid: ₹${amountInRupees}
+        
+        ============================================
         
         What's Next?
         Your pre-registration has been confirmed. We will contact you shortly to discuss your project requirements and proceed with the service.
         
         If you have any questions, please feel free to reach out to us.
+        
+        Note: Please keep this receipt for your records. You can use the Transaction ID for any payment-related queries.
         
         Best regards,
         Abhishek Kumar Chaudhary
@@ -159,16 +204,21 @@ export async function sendAdminPaymentNotification(paymentData) {
         <html>
         <head>
           <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
             .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
             .details { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+            .detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; align-items: flex-start; }
             .detail-row:last-child { border-bottom: none; }
-            .label { font-weight: bold; color: #666; }
-            .value { color: #333; }
+            .label { font-weight: bold; color: #666; min-width: 140px; flex-shrink: 0; }
+            .value { color: #333; word-break: break-all; word-wrap: break-word; text-align: right; flex: 1; }
             .highlight { background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+            @media only screen and (max-width: 600px) {
+              .container { width: 100% !important; padding: 10px !important; }
+              .detail-row { flex-direction: column; }
+              .value { text-align: left !important; margin-top: 5px; }
+            }
           </style>
         </head>
         <body>
@@ -189,7 +239,7 @@ export async function sendAdminPaymentNotification(paymentData) {
                 </div>
                 <div class="detail-row">
                   <span class="label">Email:</span>
-                  <span class="value">${customerEmail || 'N/A'}</span>
+                  <span class="value" style="font-family: monospace; font-size: 13px;">${customerEmail || 'N/A'}</span>
                 </div>
                 <div class="detail-row">
                   <span class="label">Phone:</span>
@@ -209,11 +259,11 @@ export async function sendAdminPaymentNotification(paymentData) {
                 </div>
                 <div class="detail-row">
                   <span class="label">Transaction ID:</span>
-                  <span class="value">${transactionId || merchantTransactionId || 'N/A'}</span>
+                  <span class="value" style="font-family: monospace; font-size: 13px;">${transactionId || merchantTransactionId || 'N/A'}</span>
                 </div>
                 <div class="detail-row">
                   <span class="label">Merchant Order ID:</span>
-                  <span class="value">${merchantTransactionId || 'N/A'}</span>
+                  <span class="value" style="font-family: monospace; font-size: 13px;">${merchantTransactionId || 'N/A'}</span>
                 </div>
                 <div class="detail-row">
                   <span class="label">Payment Date:</span>
