@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import twilio from 'twilio';
+import fs from 'fs';
 import { savePayment, updatePaymentStatus, getPayment } from '../../utils/paymentStorage';
 import { sendPaymentSuccessEmail, sendAdminPaymentNotification, sendPaymentFailedEmail } from '../../utils/emailService';
 
@@ -317,17 +318,20 @@ async function handlePaymentSuccess(data, environment) {
 
     // Send confirmation email to customer
     // Note: Email service expects amount in paise (will convert to rupees)
+    let pdfPath = null;
     if (finalCustomerEmail && finalCustomerName) {
-      await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
+      const result = await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
         transactionId,
         merchantTransactionId,
         amount: amount, // Pass raw amount in paise (email service will convert)
         serviceName: finalServiceName,
         customerMessage: customerMessage
       });
+      // sendPaymentSuccessEmail returns the PDF path (or true if no PDF)
+      pdfPath = typeof result === 'string' ? result : null;
     }
 
-    // Send notification to admin
+    // Send notification to admin (with PDF receipt attachment)
     // Note: Email service expects amount in paise (will convert to rupees)
     await sendAdminPaymentNotification({
       customerName: finalCustomerName,
@@ -335,10 +339,24 @@ async function handlePaymentSuccess(data, environment) {
       customerPhone: finalCustomerPhone,
       transactionId,
       merchantTransactionId,
+      pdfPath, // Pass PDF path to attach to admin email
       amount: amount, // Pass raw amount in paise (email service will convert)
       serviceName: finalServiceName,
-      message: customerMessage
+      message: customerMessage,
+      pdfPath // Include PDF path for attachment
     });
+    
+    // Clean up PDF file after both emails are sent
+    if (pdfPath) {
+      try {
+        if (fs.existsSync(pdfPath)) {
+          fs.unlinkSync(pdfPath);
+          console.log(`[${environment}] 🗑️  Temporary PDF file cleaned up: ${pdfPath}`);
+        }
+      } catch (cleanupError) {
+        console.warn(`[${environment}] ⚠️  Could not delete temporary PDF file:`, cleanupError.message);
+      }
+    }
     
     // Mark emails as sent to prevent duplicates from verification endpoint
     updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });

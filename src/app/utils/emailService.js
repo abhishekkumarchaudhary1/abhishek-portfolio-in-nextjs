@@ -210,19 +210,9 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
 
     await transporter.sendMail(mailOptions);
     
-    // Clean up PDF file after sending (if it was created)
-    if (pdfPath) {
-      try {
-        if (fs.existsSync(pdfPath)) {
-          fs.unlinkSync(pdfPath);
-        }
-      } catch (cleanupError) {
-        console.warn('⚠️  Could not delete temporary PDF file:', cleanupError.message);
-      }
-    }
-    
     console.log(`✅ Payment success email sent to ${customerEmail}${pdfPath ? ' with PDF receipt' : ' (PDF generation skipped)'}`);
-    return true;
+    // Return PDF path so it can be reused for admin email (don't delete yet)
+    return pdfPath || true;
   } catch (error) {
     console.error('❌ Error sending payment success email:', error);
     return false;
@@ -240,7 +230,7 @@ export async function sendAdminPaymentNotification(paymentData) {
   }
 
   try {
-    const { customerName, customerEmail, customerPhone, transactionId, amount, serviceName, merchantTransactionId, message } = paymentData;
+    const { customerName, customerEmail, customerPhone, transactionId, amount, serviceName, merchantTransactionId, message, pdfPath } = paymentData;
     const amountInRupees = (amount / 100).toFixed(2);
 
     const mailOptions = {
@@ -353,11 +343,27 @@ export async function sendAdminPaymentNotification(paymentData) {
         ${message ? `Project Details: ${message}` : ''}
         
         Action Required: Contact the customer to discuss project requirements and proceed with the service.
+        ${pdfPath ? '<p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #667eea; border-radius: 4px;"><strong>Note:</strong> A PDF receipt is attached to this email for your records.</p>' : ''}
       `,
     };
 
+    // Attach PDF receipt if available
+    if (pdfPath) {
+      const fs = require('fs');
+      if (fs.existsSync(pdfPath)) {
+        mailOptions.attachments = [
+          {
+            filename: `receipt_${merchantTransactionId || transactionId || 'payment'}.pdf`,
+            path: pdfPath
+          }
+        ];
+      } else {
+        console.warn('⚠️  PDF file not found at path:', pdfPath);
+      }
+    }
+
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Admin payment notification sent`);
+    console.log(`✅ Admin payment notification sent${pdfPath ? ' with PDF receipt' : ''}`);
     return true;
   } catch (error) {
     console.error('❌ Error sending admin payment notification:', error);
