@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import twilio from 'twilio';
 import { savePayment, updatePaymentStatus, getPayment } from '../../utils/paymentStorage';
 import { sendPaymentSuccessEmail, sendAdminPaymentNotification, sendPaymentFailedEmail } from '../../utils/emailService';
 
@@ -269,6 +270,45 @@ async function handlePaymentSuccess(data, environment) {
       serviceName,
       message: customerMessage
     });
+
+    // Send SMS notification if Twilio is configured
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
+      try {
+        const client = twilio(
+          process.env.TWILIO_ACCOUNT_SID,
+          process.env.TWILIO_AUTH_TOKEN
+        );
+
+        // Format phone numbers to E.164 format
+        const formatPhoneNumber = (phone) => {
+          if (!phone) return null;
+          let formatted = phone.replace(/[\s\-\(\)]/g, '');
+          if (!formatted.startsWith('+')) {
+            formatted = '+' + formatted;
+          }
+          return formatted;
+        };
+
+        const twilioPhone = formatPhoneNumber(process.env.TWILIO_PHONE_NUMBER);
+        const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
+
+        if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
+          const amountInRupees = (amount / 100).toFixed(2);
+          const smsMessage = `💰 New Payment Received!\n\nCustomer: ${customerName}\nService: ${serviceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${customerEmail || customerPhone || 'N/A'}`;
+
+          await client.messages.create({
+            body: smsMessage,
+            from: twilioPhone,
+            to: recipientPhone,
+          });
+
+          console.log(`[${environment}] ✅ SMS notification sent to ${recipientPhone}`);
+        }
+      } catch (smsError) {
+        console.error(`[${environment}] ⚠️  Error sending SMS notification:`, smsError.message || smsError);
+        // Don't fail the webhook if SMS fails
+      }
+    }
 
     console.log(`[${environment}] ✅ Payment successful: Transaction ${transactionId}, Amount: ₹${(amount / 100).toFixed(2)}, Payment ID: ${paymentId}`);
   } catch (error) {

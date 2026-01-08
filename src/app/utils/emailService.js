@@ -149,7 +149,10 @@ export async function sendAdminPaymentNotification(paymentData) {
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Send to yourself
+      to: [
+        process.env.EMAIL_USER, // support@abhishek-chaudhary.com
+        'allencarrierinst@gmail.com' // Secondary email
+      ],
       subject: `💰 New Pre-Registration Payment Received - ₹${amountInRupees}`,
       html: `
         <!DOCTYPE html>
