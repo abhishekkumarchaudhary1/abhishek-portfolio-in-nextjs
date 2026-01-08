@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { StandardCheckoutClient, Env } from 'pg-sdk-node';
-import { getPayment } from '../../utils/paymentStorage';
+import { getPayment, updatePaymentStatus } from '../../utils/paymentStorage';
+import { sendPaymentSuccessEmail, sendAdminPaymentNotification } from '../../utils/emailService';
+import twilio from 'twilio';
 
 /**
  * PhonePe Payment Verification using Official SDK
@@ -314,6 +316,98 @@ export async function POST(request) {
       isFailed: isFailed,
       isCompleted: isSuccess
     };
+    
+    // If payment is successful, send notifications (as fallback if webhook didn't trigger)
+    if (isSuccess) {
+      try {
+        // Get payment record to retrieve customer details
+        const localPayment = getPayment(merchantTransactionId);
+        
+        if (localPayment) {
+          const customerName = localPayment.customerName;
+          const customerEmail = localPayment.customerEmail;
+          const customerPhone = localPayment.customerPhone;
+          const serviceName = localPayment.serviceName;
+          const customerMessage = localPayment.customerMessage;
+          
+          // Check if emails were already sent (to avoid duplicates)
+          const emailsSent = localPayment.emailsSent || false;
+          
+          if (!emailsSent && customerEmail && customerName) {
+            console.log('📧 Sending payment notification emails (verification fallback)...');
+            
+            // Send customer confirmation email
+            await sendPaymentSuccessEmail(customerEmail, customerName, {
+              transactionId: finalTransactionId,
+              merchantTransactionId: merchantTransactionId,
+              amount: orderStatus.amount,
+              serviceName: serviceName
+            });
+            
+            // Send admin notification email
+            await sendAdminPaymentNotification({
+              customerName,
+              customerEmail,
+              customerPhone,
+              transactionId: finalTransactionId,
+              merchantTransactionId: merchantTransactionId,
+              amount: orderStatus.amount,
+              serviceName: serviceName,
+              message: customerMessage
+            });
+            
+            // Mark emails as sent
+            updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
+            console.log('✅ Payment notification emails sent successfully');
+            
+            // Send SMS notification if Twilio is configured
+            if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
+              try {
+                const client = twilio(
+                  process.env.TWILIO_ACCOUNT_SID,
+                  process.env.TWILIO_AUTH_TOKEN
+                );
+
+                const formatPhoneNumber = (phone) => {
+                  if (!phone) return null;
+                  let formatted = phone.replace(/[\s\-\(\)]/g, '');
+                  if (!formatted.startsWith('+')) {
+                    formatted = '+' + formatted;
+                  }
+                  return formatted;
+                };
+
+                const twilioPhone = formatPhoneNumber(process.env.TWILIO_PHONE_NUMBER);
+                const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
+
+                if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
+                  const amountInRupees = (orderStatus.amount / 100).toFixed(2);
+                  const smsMessage = `💰 New Payment Received!\n\nCustomer: ${customerName}\nService: ${serviceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${finalTransactionId || merchantTransactionId}\n\nContact: ${customerEmail || customerPhone || 'N/A'}`;
+
+                  await client.messages.create({
+                    body: smsMessage,
+                    from: twilioPhone,
+                    to: recipientPhone,
+                  });
+
+                  console.log('✅ SMS notification sent successfully');
+                }
+              } catch (smsError) {
+                console.error('⚠️  Error sending SMS notification:', smsError.message || smsError);
+                // Don't fail if SMS fails
+              }
+            }
+          } else if (emailsSent) {
+            console.log('ℹ️  Emails already sent for this payment (skipping to avoid duplicates)');
+          }
+        } else {
+          console.log('⚠️  No local payment record found - cannot send notifications');
+        }
+      } catch (notificationError) {
+        console.error('⚠️  Error sending payment notifications:', notificationError);
+        // Don't fail the verification if notifications fail
+      }
+    }
     
     console.log('=== Final Response Data ===');
     console.log(JSON.stringify(responseData, null, 2));
