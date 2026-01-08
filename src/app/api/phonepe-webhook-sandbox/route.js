@@ -69,7 +69,8 @@ export async function POST(request) {
 
     // Extract event information
     const eventType = payload.event || payload.type || payload.eventType;
-    const eventData = payload.data || payload;
+    // PhonePe sends data in payload.payload for checkout.order.completed events
+    const eventData = payload.payload || payload.data || payload;
 
     console.log('PhonePe Sandbox Webhook Event:', {
       eventType,
@@ -218,11 +219,20 @@ async function handlePaymentSuccess(data, environment) {
   
   try {
     // Extract transaction details - PhonePe may send data in different structures
-    const transactionId = data.transactionId || data.phonepeTransactionId || data.paymentId || data.id;
-    const merchantTransactionId = data.merchantTransactionId || data.merchantOrderId || data.orderId || data.order?.id;
+    // For checkout.order.completed, data is the payload object
+    const transactionId = data.paymentDetails?.[0]?.transactionId || data.transactionId || data.phonepeTransactionId || data.paymentId || data.id;
+    const merchantTransactionId = data.merchantOrderId || data.merchantTransactionId || data.orderId || data.order?.id;
     const amount = data.amount || data.amountPaid || data.order?.amount || (data.order?.amountPaid ? data.order.amountPaid : null);
-    const paymentId = data.paymentId || data.phonepeTransactionId || transactionId;
-    const paymentMode = data.paymentMode || data.paymentMethod || data.payment?.method;
+    const paymentId = data.paymentDetails?.[0]?.transactionId || data.paymentId || data.phonepeTransactionId || transactionId;
+    const paymentMode = data.paymentDetails?.[0]?.paymentMode || data.paymentMode || data.paymentMethod || data.payment?.method;
+    
+    // Extract customer details from metaInfo (PhonePe UDF fields)
+    const metaInfo = data.metaInfo || {};
+    const customerName = metaInfo.udf1 || data.customerName || data.name;
+    const customerEmail = metaInfo.udf2 || data.customerEmail || data.email;
+    const customerPhone = metaInfo.udf3 || data.customerPhone || data.phone;
+    const serviceName = metaInfo.udf4 || data.serviceName;
+    const serviceId = metaInfo.udf5 || data.serviceId;
     
     console.log(`[${environment}] Extracted payment details:`, {
       transactionId,
@@ -246,12 +256,12 @@ async function handlePaymentSuccess(data, environment) {
       console.warn(`[${environment}] ⚠️  No existing payment record found for ${merchantTransactionId}. Creating new record from webhook data.`);
     }
     
-    // Extract customer details from payment record or webhook data
-    const customerName = payment?.customerName || data.customerName || data.name;
-    const customerEmail = payment?.customerEmail || data.customerEmail || data.email;
-    const customerPhone = payment?.customerPhone || data.customerPhone || data.phone;
-    const serviceName = payment?.serviceName || data.serviceName;
-    const serviceId = payment?.serviceId || data.serviceId;
+    // Use customer details from webhook metaInfo, fallback to payment record, then webhook data
+    const finalCustomerName = customerName || payment?.customerName || data.customerName || data.name;
+    const finalCustomerEmail = customerEmail || payment?.customerEmail || data.customerEmail || data.email;
+    const finalCustomerPhone = customerPhone || payment?.customerPhone || data.customerPhone || data.phone;
+    const finalServiceName = serviceName || payment?.serviceName || data.serviceName;
+    const finalServiceId = serviceId || payment?.serviceId || data.serviceId;
     const customerMessage = payment?.customerMessage || data.message;
 
     // Update or create payment record
@@ -259,15 +269,15 @@ async function handlePaymentSuccess(data, environment) {
       merchantTransactionId,
       transactionId,
       status: 'completed',
-      amount,
-      serviceId,
-      serviceName,
-      customerName,
-      customerEmail,
-      customerPhone,
+      amount: amount ? amount / 100 : null, // PhonePe sends amount in paise, convert to rupees
+      serviceId: finalServiceId,
+      serviceName: finalServiceName,
+      customerName: finalCustomerName,
+      customerEmail: finalCustomerEmail,
+      customerPhone: finalCustomerPhone,
       customerMessage,
       paymentMode,
-      paymentState: 'COMPLETED',
+      paymentState: data.state || 'COMPLETED',
       environment
     };
 
@@ -275,24 +285,24 @@ async function handlePaymentSuccess(data, environment) {
     console.log(`[${environment}] ✅ Payment record saved: ${merchantTransactionId}`);
 
     // Send confirmation email to customer
-    if (customerEmail && customerName) {
-      await sendPaymentSuccessEmail(customerEmail, customerName, {
+    if (finalCustomerEmail && finalCustomerName) {
+      await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
         transactionId,
         merchantTransactionId,
-        amount,
-        serviceName
+        amount: paymentData.amount,
+        serviceName: finalServiceName
       });
     }
 
     // Send notification to admin
     await sendAdminPaymentNotification({
-      customerName,
-      customerEmail,
-      customerPhone,
+      customerName: finalCustomerName,
+      customerEmail: finalCustomerEmail,
+      customerPhone: finalCustomerPhone,
       transactionId,
       merchantTransactionId,
-      amount,
-      serviceName,
+      amount: paymentData.amount,
+      serviceName: finalServiceName,
       message: customerMessage
     });
 
