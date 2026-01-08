@@ -555,9 +555,9 @@ async function generatePaymentReceiptPDF(receiptData) {
     
     yPos -= 20;
     
-    // Total Amount
+    // Total Amount (using ASCII-compatible currency symbol)
     const totalLabel = 'Total Amount Paid:';
-    const totalValue = `₹${amount}`;
+    const totalValue = `Rs. ${amount}`;
     const totalLabelWidth = helveticaBoldFont.widthOfTextAtSize(totalLabel, 16);
     const totalValueWidth = helveticaBoldFont.widthOfTextAtSize(totalValue, 16);
     
