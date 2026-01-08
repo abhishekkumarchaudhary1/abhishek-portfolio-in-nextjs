@@ -110,8 +110,11 @@ export async function POST(request) {
         await handleSubscriptionRedemptionCompleted(eventData, 'PRODUCTION');
         break;
 
+      case 'checkout.order.completed':
       case 'PAYMENT_SUCCESS':
       case 'payment.success':
+        // checkout.order.completed is PhonePe's standard event for successful payments
+        console.log('Processing checkout.order.completed event as payment success');
         await handlePaymentSuccess(eventData, 'PRODUCTION');
         break;
 
@@ -242,17 +245,37 @@ async function handleSubscriptionRedemptionCompleted(data, environment) {
  * Handle payment success event
  */
 async function handlePaymentSuccess(data, environment) {
-  console.log(`[${environment}] Payment Success:`, data);
+  console.log(`[${environment}] Payment Success:`, JSON.stringify(data, null, 2));
   
   try {
-    const transactionId = data.transactionId || data.phonepeTransactionId;
-    const merchantTransactionId = data.merchantTransactionId || data.orderId;
-    const amount = data.amount;
-    const paymentId = data.paymentId || data.phonepeTransactionId;
-    const paymentMode = data.paymentMode;
+    // Extract transaction details - PhonePe may send data in different structures
+    const transactionId = data.transactionId || data.phonepeTransactionId || data.paymentId || data.id;
+    const merchantTransactionId = data.merchantTransactionId || data.merchantOrderId || data.orderId || data.order?.id;
+    const amount = data.amount || data.amountPaid || data.order?.amount || (data.order?.amountPaid ? data.order.amountPaid : null);
+    const paymentId = data.paymentId || data.phonepeTransactionId || transactionId;
+    const paymentMode = data.paymentMode || data.paymentMethod || data.payment?.method;
+    
+    console.log(`[${environment}] Extracted payment details:`, {
+      transactionId,
+      merchantTransactionId,
+      amount,
+      paymentId,
+      paymentMode
+    });
+    
+    // Validate required fields
+    if (!merchantTransactionId) {
+      console.error(`[${environment}] ❌ Missing merchantTransactionId in webhook data. Cannot process payment.`);
+      console.error(`[${environment}] Full webhook data:`, JSON.stringify(data, null, 2));
+      return;
+    }
     
     // Get existing payment record if available
     let payment = getPayment(merchantTransactionId);
+    
+    if (!payment) {
+      console.warn(`[${environment}] ⚠️  No existing payment record found for ${merchantTransactionId}. Creating new record from webhook data.`);
+    }
     
     // Extract customer details from payment record or webhook data
     const customerName = payment?.customerName || data.customerName || data.name;
