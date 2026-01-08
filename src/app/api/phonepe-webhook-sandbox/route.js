@@ -220,7 +220,8 @@ async function handlePaymentSuccess(data, environment) {
   try {
     // Extract transaction details - PhonePe may send data in different structures
     // For checkout.order.completed, data is the payload object
-    const transactionId = data.paymentDetails?.[0]?.transactionId || data.transactionId || data.phonepeTransactionId || data.paymentId || data.id;
+    // Use orderId (OMO...) as primary transaction ID since that's what user sees on PhonePe screen
+    const transactionId = data.orderId || data.paymentDetails?.[0]?.transactionId || data.transactionId || data.phonepeTransactionId || data.paymentId || data.id;
     const merchantTransactionId = data.merchantOrderId || data.merchantTransactionId || data.orderId || data.order?.id;
     const amount = data.amount || data.amountPaid || data.order?.amount || (data.order?.amountPaid ? data.order.amountPaid : null);
     const paymentId = data.paymentDetails?.[0]?.transactionId || data.paymentId || data.phonepeTransactionId || transactionId;
