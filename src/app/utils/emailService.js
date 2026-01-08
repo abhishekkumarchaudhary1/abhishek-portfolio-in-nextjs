@@ -1,4 +1,8 @@
 import nodemailer from 'nodemailer';
+import PDFDocument from 'pdfkit';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
 /**
  * Email Service for Payment Notifications
@@ -34,8 +38,19 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
   }
 
   try {
-    const { transactionId, amount, serviceName, merchantTransactionId } = paymentData;
+    const { transactionId, amount, serviceName, merchantTransactionId, customerMessage } = paymentData;
     const amountInRupees = (amount / 100).toFixed(2);
+    
+    // Generate PDF receipt
+    const pdfPath = await generatePaymentReceiptPDF({
+      customerName,
+      transactionId: transactionId || merchantTransactionId,
+      merchantTransactionId,
+      amount: amountInRupees,
+      serviceName,
+      customerMessage,
+      paymentDate: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'long', timeStyle: 'short' })
+    });
 
     const mailOptions = {
       from: process.env.EMAIL_USER,
@@ -121,8 +136,15 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
               
               <p>If you have any questions, please feel free to reach out to us.</p>
               
+              ${customerMessage ? `
+              <div class="details" style="margin-top: 25px;">
+                <h3 style="margin-top: 0; color: #667eea;">Project Details</h3>
+                <p style="white-space: pre-wrap; word-wrap: break-word;">${customerMessage}</p>
+              </div>
+              ` : ''}
+              
               <p style="margin-top: 20px; padding: 15px; background: #f0f9ff; border-left: 4px solid #667eea; border-radius: 4px;">
-                <strong>Note:</strong> Please keep this receipt for your records. You can use the Transaction ID for any payment-related queries.
+                <strong>Note:</strong> Please keep this receipt for your records. A downloadable PDF receipt is attached to this email. You can use the Transaction ID for any payment-related queries.
               </p>
               
               <div class="footer">
@@ -162,15 +184,33 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
         
         If you have any questions, please feel free to reach out to us.
         
-        Note: Please keep this receipt for your records. You can use the Transaction ID for any payment-related queries.
+        ${customerMessage ? `\nProject Details:\n${customerMessage}\n` : ''}
+        
+        Note: Please keep this receipt for your records. A downloadable PDF receipt is attached to this email. You can use the Transaction ID for any payment-related queries.
         
         Best regards,
         Abhishek Kumar Chaudhary
       `,
+      attachments: [
+        {
+          filename: `Payment_Receipt_${merchantTransactionId || transactionId}.pdf`,
+          path: pdfPath
+        }
+      ]
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`✅ Payment success email sent to ${customerEmail}`);
+    
+    // Clean up PDF file after sending
+    try {
+      if (fs.existsSync(pdfPath)) {
+        fs.unlinkSync(pdfPath);
+      }
+    } catch (cleanupError) {
+      console.warn('⚠️  Could not delete temporary PDF file:', cleanupError.message);
+    }
+    
+    console.log(`✅ Payment success email sent to ${customerEmail} with PDF receipt`);
     return true;
   } catch (error) {
     console.error('❌ Error sending payment success email:', error);
@@ -387,5 +427,177 @@ export async function sendPaymentFailedEmail(customerEmail, customerName, paymen
     console.error('❌ Error sending payment failed email:', error);
     return false;
   }
+}
+
+/**
+ * Generate PDF receipt for payment
+ */
+async function generatePaymentReceiptPDF(receiptData) {
+  return new Promise((resolve, reject) => {
+    try {
+      const { customerName, transactionId, merchantTransactionId, amount, serviceName, customerMessage, paymentDate } = receiptData;
+      
+      // Create temporary file path
+      const tempDir = os.tmpdir();
+      const fileName = `receipt_${merchantTransactionId || transactionId}_${Date.now()}.pdf`;
+      const filePath = path.join(tempDir, fileName);
+      
+      // Create PDF document
+      const doc = new PDFDocument({ 
+        size: 'A4',
+        margin: 50,
+        info: {
+          Title: 'Payment Receipt',
+          Author: 'Abhishek Kumar Chaudhary',
+          Subject: 'Pre-Registration Payment Receipt'
+        }
+      });
+      
+      // Pipe to file
+      const stream = fs.createWriteStream(filePath);
+      doc.pipe(stream);
+      
+      // Header
+      doc.fontSize(24)
+         .fillColor('#667eea')
+         .text('PAYMENT RECEIPT', { align: 'center' });
+      
+      doc.moveDown(0.5);
+      doc.fontSize(12)
+         .fillColor('#666')
+         .text('Pre-Registration Payment Confirmation', { align: 'center' });
+      
+      doc.moveDown(1);
+      doc.strokeColor('#667eea')
+         .lineWidth(2)
+         .moveTo(50, doc.y)
+         .lineTo(550, doc.y)
+         .stroke();
+      
+      doc.moveDown(1.5);
+      
+      // Receipt Details
+      doc.fontSize(11)
+         .fillColor('#333');
+      
+      const leftMargin = 50;
+      const rightMargin = 350;
+      const lineHeight = 20;
+      let yPos = doc.y;
+      
+      // Customer Name
+      doc.fontSize(11)
+         .fillColor('#666')
+         .text('Customer Name:', leftMargin, yPos);
+      doc.fillColor('#333')
+         .text(customerName || 'N/A', rightMargin, yPos);
+      yPos += lineHeight;
+      
+      // Service
+      doc.fillColor('#666')
+         .text('Service:', leftMargin, yPos);
+      doc.fillColor('#333')
+         .text(serviceName || 'N/A', rightMargin, yPos);
+      yPos += lineHeight;
+      
+      // Transaction ID
+      doc.fillColor('#666')
+         .text('Transaction ID:', leftMargin, yPos);
+      doc.fillColor('#333')
+         .font('Courier')
+         .fontSize(10)
+         .text(transactionId || 'N/A', rightMargin, yPos);
+      yPos += lineHeight;
+      
+      // Merchant Order ID
+      doc.font('Helvetica')
+         .fontSize(11)
+         .fillColor('#666')
+         .text('Merchant Order ID:', leftMargin, yPos);
+      doc.fillColor('#333')
+         .font('Courier')
+         .fontSize(10)
+         .text(merchantTransactionId || 'N/A', rightMargin, yPos);
+      yPos += lineHeight;
+      
+      // Payment Date
+      doc.font('Helvetica')
+         .fontSize(11)
+         .fillColor('#666')
+         .text('Payment Date:', leftMargin, yPos);
+      doc.fillColor('#333')
+         .text(paymentDate, rightMargin, yPos);
+      yPos += lineHeight;
+      
+      // Payment Status
+      doc.fillColor('#666')
+         .text('Payment Status:', leftMargin, yPos);
+      doc.fillColor('#10b981')
+         .text('✅ Completed', rightMargin, yPos);
+      yPos += lineHeight + 10;
+      
+      // Divider
+      doc.strokeColor('#eee')
+         .lineWidth(1)
+         .moveTo(leftMargin, yPos)
+         .lineTo(550, yPos)
+         .stroke();
+      
+      yPos += 15;
+      
+      // Total Amount
+      doc.fontSize(16)
+         .fillColor('#667eea')
+         .font('Helvetica-Bold')
+         .text('Total Amount Paid:', leftMargin, yPos);
+      doc.text(`₹${amount}`, rightMargin, yPos);
+      
+      // Project Details (if available)
+      if (customerMessage) {
+        yPos += 40;
+        doc.strokeColor('#667eea')
+           .lineWidth(2)
+           .moveTo(50, yPos)
+           .lineTo(550, yPos)
+           .stroke();
+        
+        yPos += 20;
+        doc.fontSize(14)
+           .fillColor('#667eea')
+           .font('Helvetica-Bold')
+           .text('Project Details', leftMargin, yPos);
+        
+        yPos += 20;
+        doc.fontSize(11)
+           .fillColor('#333')
+           .font('Helvetica')
+           .text(customerMessage, leftMargin, yPos, {
+             width: 500,
+             align: 'left'
+           });
+      }
+      
+      // Footer
+      const footerY = 750;
+      doc.fontSize(9)
+         .fillColor('#999')
+         .text('This is a computer-generated receipt.', 50, footerY, { align: 'center', width: 500 });
+      doc.text('For any queries, please contact: support@abhishek-chaudhary.com', 50, footerY + 15, { align: 'center', width: 500 });
+      
+      // Finalize PDF
+      doc.end();
+      
+      stream.on('finish', () => {
+        resolve(filePath);
+      });
+      
+      stream.on('error', (error) => {
+        reject(error);
+      });
+      
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 

@@ -322,7 +322,8 @@ async function handlePaymentSuccess(data, environment) {
         transactionId,
         merchantTransactionId,
         amount: amount, // Pass raw amount in paise (email service will convert)
-        serviceName: finalServiceName
+        serviceName: finalServiceName,
+        customerMessage: customerMessage
       });
     }
 

@@ -369,7 +369,8 @@ export async function POST(request) {
                 transactionId: finalTransactionId,
                 merchantTransactionId: merchantTransactionId,
                 amount: orderStatus.amount,
-                serviceName: serviceName
+                serviceName: serviceName,
+                customerMessage: customerMessage
               });
               console.log('📧 Customer email sent:', customerEmailResult ? 'SUCCESS' : 'FAILED');
               
