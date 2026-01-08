@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import PdfPrinter from 'pdfmake';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -438,245 +438,242 @@ export async function sendPaymentFailedEmail(customerEmail, customerName, paymen
 }
 
 /**
- * Generate PDF receipt for payment
+ * Generate PDF receipt for payment using pdf-lib (serverless-friendly)
  */
 async function generatePaymentReceiptPDF(receiptData) {
-  return new Promise((resolve, reject) => {
-    try {
-      const { customerName, transactionId, merchantTransactionId, amount, serviceName, customerMessage, paymentDate } = receiptData;
-      
-      // Create temporary file path
-      const tempDir = os.tmpdir();
-      const fileName = `receipt_${merchantTransactionId || transactionId}_${Date.now()}.pdf`;
-      const filePath = path.join(tempDir, fileName);
-      
-      // Define fonts (pdfmake uses built-in fonts - no external files needed)
-      const fonts = {
-        Roboto: {
-          normal: 'Helvetica',
-          bold: 'Helvetica-Bold',
-          italics: 'Helvetica-Oblique',
-          bolditalics: 'Helvetica-BoldOblique'
-        }
-      };
-      
-      const printer = new PdfPrinter(fonts);
-      
-      // Define PDF document
-      const docDefinition = {
-        pageSize: 'A4',
-        pageMargins: [50, 50, 50, 50],
-        info: {
-          title: 'Payment Receipt',
-          author: 'Abhishek Kumar Chaudhary',
-          subject: 'Pre-Registration Payment Receipt'
-        },
-        content: [
-          // Header
-          {
-            text: 'PAYMENT RECEIPT',
-            style: 'header',
-            alignment: 'center',
-            margin: [0, 0, 0, 10]
-          },
-          {
-            text: 'Pre-Registration Payment Confirmation',
-            style: 'subheader',
-            alignment: 'center',
-            margin: [0, 0, 0, 20]
-          },
-          {
-            canvas: [
-              {
-                type: 'line',
-                x1: 0,
-                y1: 0,
-                x2: 500,
-                y2: 0,
-                lineWidth: 2,
-                lineColor: '#667eea'
-              }
-            ],
-            margin: [0, 0, 0, 20]
-          },
-          
-          // Receipt Details
-          {
-            columns: [
-              {
-                width: '*',
-                text: [
-                  { text: 'Customer Name:\n', style: 'label' },
-                  { text: 'Service:\n', style: 'label' },
-                  { text: 'Transaction ID:\n', style: 'label' },
-                  { text: 'Merchant Order ID:\n', style: 'label' },
-                  { text: 'Payment Date:\n', style: 'label' },
-                  { text: 'Payment Status:\n', style: 'label' }
-                ]
-              },
-              {
-                width: 'auto',
-                text: [
-                  { text: `${customerName || 'N/A'}\n`, style: 'value' },
-                  { text: `${serviceName || 'N/A'}\n`, style: 'value' },
-                  { text: `${transactionId || 'N/A'}\n`, style: 'valueMonospace' },
-                  { text: `${merchantTransactionId || 'N/A'}\n`, style: 'valueMonospace' },
-                  { text: `${paymentDate}\n`, style: 'value' },
-                  { text: '✅ Completed\n', style: 'status' }
-                ],
-                alignment: 'right'
-              }
-            ],
-            margin: [0, 0, 0, 20]
-          },
-          
-          // Divider
-          {
-            canvas: [
-              {
-                type: 'line',
-                x1: 0,
-                y1: 0,
-                x2: 500,
-                y2: 0,
-                lineWidth: 1,
-                lineColor: '#eee'
-              }
-            ],
-            margin: [0, 0, 0, 20]
-          },
-          
-          // Total Amount
-          {
-            columns: [
-              {
-                width: '*',
-                text: 'Total Amount Paid:',
-                style: 'totalLabel',
-                bold: true
-              },
-              {
-                width: 'auto',
-                text: `₹${amount}`,
-                style: 'totalValue',
-                bold: true,
-                alignment: 'right'
-              }
-            ],
-            margin: [0, 0, 0, customerMessage ? 30 : 0]
-          },
-          
-          // Project Details (if available)
-          ...(customerMessage ? [
-            {
-              canvas: [
-                {
-                  type: 'line',
-                  x1: 0,
-                  y1: 0,
-                  x2: 500,
-                  y2: 0,
-                  lineWidth: 2,
-                  lineColor: '#667eea'
-                }
-              ],
-              margin: [0, 20, 0, 20]
-            },
-            {
-              text: 'Project Details',
-              style: 'sectionHeader',
-              margin: [0, 0, 0, 10]
-            },
-            {
-              text: customerMessage,
-              style: 'projectDetails',
-              margin: [0, 0, 0, 20]
-            }
-          ] : [])
-        ],
-        styles: {
-          header: {
-            fontSize: 24,
-            bold: true,
-            color: '#667eea'
-          },
-          subheader: {
-            fontSize: 12,
-            color: '#666'
-          },
-          label: {
-            fontSize: 11,
-            color: '#666',
-            margin: [0, 5, 0, 5]
-          },
-          value: {
-            fontSize: 11,
-            color: '#333',
-            margin: [0, 5, 0, 5]
-          },
-          valueMonospace: {
-            fontSize: 10,
-            color: '#333',
-            margin: [0, 5, 0, 5]
-          },
-          status: {
-            fontSize: 11,
-            color: '#10b981',
-            bold: true,
-            margin: [0, 5, 0, 5]
-          },
-          totalLabel: {
-            fontSize: 16,
-            color: '#667eea'
-          },
-          totalValue: {
-            fontSize: 16,
-            color: '#667eea'
-          },
-          sectionHeader: {
-            fontSize: 14,
-            bold: true,
-            color: '#667eea'
-          },
-          projectDetails: {
-            fontSize: 11,
-            color: '#333',
-            lineHeight: 1.5
-          }
-        },
-        defaultStyle: {
-          font: 'Roboto'
-        },
-        footer: function(currentPage, pageCount) {
-          return {
-            text: [
-              { text: 'This is a computer-generated receipt.\n', fontSize: 9, color: '#999', alignment: 'center' },
-              { text: 'For any queries, please contact: support@abhishek-chaudhary.com', fontSize: 9, color: '#999', alignment: 'center' }
-            ],
-            margin: [50, 20, 50, 0]
-          };
-        }
-      };
-      
-      // Generate PDF
-      const pdfDoc = printer.createPdfKitDocument(docDefinition);
-      
-      // Write to file
-      const stream = fs.createWriteStream(filePath);
-      pdfDoc.pipe(stream);
-      pdfDoc.end();
-      
-      stream.on('finish', () => {
-        resolve(filePath);
+  try {
+    const { customerName, transactionId, merchantTransactionId, amount, serviceName, customerMessage, paymentDate } = receiptData;
+    
+    // Create temporary file path
+    const tempDir = os.tmpdir();
+    const fileName = `receipt_${merchantTransactionId || transactionId}_${Date.now()}.pdf`;
+    const filePath = path.join(tempDir, fileName);
+    
+    // Create a new PDF document
+    const pdfDoc = await PDFDocument.create();
+    
+    // Embed standard fonts (built-in, no external files needed)
+    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const helveticaBoldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
+    // Add a page
+    const page = pdfDoc.addPage([595, 842]); // A4 size in points
+    const { width, height } = page.getSize();
+    
+    // Define colors
+    const primaryColor = rgb(0.4, 0.494, 0.918); // #667eea
+    const textColor = rgb(0.2, 0.2, 0.2); // #333
+    const grayColor = rgb(0.4, 0.4, 0.4); // #666
+    const successColor = rgb(0.063, 0.725, 0.506); // #10b981
+    const lightGray = rgb(0.933, 0.933, 0.933); // #eee
+    
+    let yPos = height - 50; // Start from top with margin
+    
+    // Header
+    page.drawText('PAYMENT RECEIPT', {
+      x: 50,
+      y: yPos,
+      size: 24,
+      font: helveticaBoldFont,
+      color: primaryColor,
+    });
+    
+    // Center the header
+    const headerWidth = helveticaBoldFont.widthOfTextAtSize('PAYMENT RECEIPT', 24);
+    page.drawText('PAYMENT RECEIPT', {
+      x: (width - headerWidth) / 2,
+      y: yPos,
+      size: 24,
+      font: helveticaBoldFont,
+      color: primaryColor,
+    });
+    
+    yPos -= 30;
+    
+    // Subheader
+    const subheaderText = 'Pre-Registration Payment Confirmation';
+    const subheaderWidth = helveticaFont.widthOfTextAtSize(subheaderText, 12);
+    page.drawText(subheaderText, {
+      x: (width - subheaderWidth) / 2,
+      y: yPos,
+      size: 12,
+      font: helveticaFont,
+      color: grayColor,
+    });
+    
+    yPos -= 30;
+    
+    // Draw line
+    page.drawLine({
+      start: { x: 50, y: yPos },
+      end: { x: width - 50, y: yPos },
+      thickness: 2,
+      color: primaryColor,
+    });
+    
+    yPos -= 30;
+    
+    // Helper function to draw label-value pair
+    const drawLabelValue = (label, value, isMonospace = false, isStatus = false) => {
+      page.drawText(label, {
+        x: 50,
+        y: yPos,
+        size: 11,
+        font: helveticaFont,
+        color: grayColor,
       });
       
-      stream.on('error', (error) => {
-        reject(error);
+      const valueWidth = (isMonospace ? helveticaFont : helveticaFont).widthOfTextAtSize(value, isMonospace ? 10 : 11);
+      page.drawText(value, {
+        x: width - 50 - valueWidth,
+        y: yPos,
+        size: isMonospace ? 10 : 11,
+        font: isStatus ? helveticaBoldFont : helveticaFont,
+        color: isStatus ? successColor : textColor,
       });
       
-    } catch (error) {
-      reject(error);
+      yPos -= 20;
+    };
+    
+    // Receipt Details
+    drawLabelValue('Customer Name:', customerName || 'N/A');
+    drawLabelValue('Service:', serviceName || 'N/A');
+    drawLabelValue('Transaction ID:', transactionId || 'N/A', true);
+    drawLabelValue('Merchant Order ID:', merchantTransactionId || 'N/A', true);
+    drawLabelValue('Payment Date:', paymentDate);
+    drawLabelValue('Payment Status:', '✅ Completed', false, true);
+    
+    yPos -= 10;
+    
+    // Draw divider
+    page.drawLine({
+      start: { x: 50, y: yPos },
+      end: { x: width - 50, y: yPos },
+      thickness: 1,
+      color: lightGray,
+    });
+    
+    yPos -= 20;
+    
+    // Total Amount
+    const totalLabel = 'Total Amount Paid:';
+    const totalValue = `₹${amount}`;
+    const totalLabelWidth = helveticaBoldFont.widthOfTextAtSize(totalLabel, 16);
+    const totalValueWidth = helveticaBoldFont.widthOfTextAtSize(totalValue, 16);
+    
+    page.drawText(totalLabel, {
+      x: 50,
+      y: yPos,
+      size: 16,
+      font: helveticaBoldFont,
+      color: primaryColor,
+    });
+    
+    page.drawText(totalValue, {
+      x: width - 50 - totalValueWidth,
+      y: yPos,
+      size: 16,
+      font: helveticaBoldFont,
+      color: primaryColor,
+    });
+    
+    yPos -= 40;
+    
+    // Project Details (if available)
+    if (customerMessage) {
+      // Draw line
+      page.drawLine({
+        start: { x: 50, y: yPos },
+        end: { x: width - 50, y: yPos },
+        thickness: 2,
+        color: primaryColor,
+      });
+      
+      yPos -= 25;
+      
+      // Project Details header
+      page.drawText('Project Details', {
+        x: 50,
+        y: yPos,
+        size: 14,
+        font: helveticaBoldFont,
+        color: primaryColor,
+      });
+      
+      yPos -= 25;
+      
+      // Project details text (wrap if needed)
+      const maxWidth = width - 100;
+      const words = customerMessage.split(' ');
+      let line = '';
+      const lineHeight = 15;
+      
+      for (const word of words) {
+        const testLine = line + word + ' ';
+        const testWidth = helveticaFont.widthOfTextAtSize(testLine, 11);
+        
+        if (testWidth > maxWidth && line.length > 0) {
+          page.drawText(line.trim(), {
+            x: 50,
+            y: yPos,
+            size: 11,
+            font: helveticaFont,
+            color: textColor,
+          });
+          yPos -= lineHeight;
+          line = word + ' ';
+        } else {
+          line = testLine;
+        }
+      }
+      
+      if (line.length > 0) {
+        page.drawText(line.trim(), {
+          x: 50,
+          y: yPos,
+          size: 11,
+          font: helveticaFont,
+          color: textColor,
+        });
+      }
     }
-  });
+    
+    // Footer
+    const footerY = 50;
+    const footerText1 = 'This is a computer-generated receipt.';
+    const footerText2 = 'For any queries, please contact: support@abhishek-chaudhary.com';
+    
+    const footer1Width = helveticaFont.widthOfTextAtSize(footerText1, 9);
+    const footer2Width = helveticaFont.widthOfTextAtSize(footerText2, 9);
+    
+    page.drawText(footerText1, {
+      x: (width - footer1Width) / 2,
+      y: footerY + 15,
+      size: 9,
+      font: helveticaFont,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+    
+    page.drawText(footerText2, {
+      x: (width - footer2Width) / 2,
+      y: footerY,
+      size: 9,
+      font: helveticaFont,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+    
+    // Set PDF metadata
+    pdfDoc.setTitle('Payment Receipt');
+    pdfDoc.setAuthor('Abhishek Kumar Chaudhary');
+    pdfDoc.setSubject('Pre-Registration Payment Receipt');
+    
+    // Save PDF to file
+    const pdfBytes = await pdfDoc.save();
+    fs.writeFileSync(filePath, pdfBytes);
+    
+    return filePath;
+  } catch (error) {
+    throw error;
+  }
 }
 
