@@ -41,6 +41,9 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
     const { transactionId, amount, serviceName, merchantTransactionId, customerMessage } = paymentData;
     const amountInRupees = (amount / 100).toFixed(2);
     
+    // Debug: Log customerMessage to verify it's being passed
+    console.log('📧 Email - customerMessage:', customerMessage ? 'Present' : 'Missing', customerMessage ? `(${customerMessage.length} chars)` : '');
+    
     // Generate PDF receipt (with error handling for serverless environments)
     let pdfPath = null;
     try {
@@ -142,10 +145,10 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
               
               <p>If you have any questions, please feel free to reach out to us.</p>
               
-              ${customerMessage ? `
+              ${customerMessage && customerMessage.trim() ? `
               <div class="details" style="margin-top: 25px;">
-                <h3 style="margin-top: 0; color: #667eea;">Project Details</h3>
-                <p style="white-space: pre-wrap; word-wrap: break-word;">${customerMessage}</p>
+                <h3 style="margin-top: 0; color: #667eea; font-size: 16px; margin-bottom: 10px;">Project Details</h3>
+                <p style="white-space: pre-wrap; word-wrap: break-word; line-height: 1.6; color: #333;">${customerMessage}</p>
               </div>
               ` : ''}
               
@@ -190,7 +193,7 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
         
         If you have any questions, please feel free to reach out to us.
         
-        ${customerMessage ? `\nProject Details:\n${customerMessage}\n` : ''}
+        ${customerMessage && customerMessage.trim() ? `\n\nProject Details:\n${customerMessage}\n` : ''}
         
         Note: Please keep this receipt for your records.${pdfPath ? ' A downloadable PDF receipt is attached to this email.' : ''} You can use the Transaction ID for any payment-related queries.
         

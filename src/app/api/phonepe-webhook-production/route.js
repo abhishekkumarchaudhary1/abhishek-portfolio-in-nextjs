@@ -286,6 +286,8 @@ async function handlePaymentSuccess(data, environment) {
     
     if (!payment) {
       console.warn(`[${environment}] ⚠️  No existing payment record found for ${merchantTransactionId}. Creating new record from webhook data.`);
+    } else {
+      console.log(`[${environment}] ✅ Found existing payment record with customerMessage:`, payment.customerMessage ? 'Present' : 'Missing');
     }
     
     // Use customer details from webhook metaInfo, fallback to payment record, then webhook data
@@ -294,7 +296,9 @@ async function handlePaymentSuccess(data, environment) {
     const finalCustomerPhone = customerPhone || payment?.customerPhone || data.customerPhone || data.phone;
     const finalServiceName = serviceName || payment?.serviceName || data.serviceName;
     const finalServiceId = serviceId || payment?.serviceId || data.serviceId;
-    const customerMessage = payment?.customerMessage || data.message;
+    const customerMessage = payment?.customerMessage || data.message || '';
+    
+    console.log(`[${environment}] 📝 Customer message for email:`, customerMessage ? `Present (${customerMessage.length} chars)` : 'Missing/Empty');
 
     // Update or create payment record
     const paymentData = {
