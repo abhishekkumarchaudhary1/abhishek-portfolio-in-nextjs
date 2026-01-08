@@ -311,8 +311,8 @@ async function handlePaymentSuccess(data, environment) {
     // Mark emails as sent to prevent duplicates from verification endpoint
     updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
 
-    // Send SMS notification if Twilio is configured
-    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
+    // Send SMS notifications if Twilio is configured
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
       try {
         const client = twilio(
           process.env.TWILIO_ACCOUNT_SID,
@@ -324,28 +324,69 @@ async function handlePaymentSuccess(data, environment) {
           if (!phone) return null;
           let formatted = phone.replace(/[\s\-\(\)]/g, '');
           if (!formatted.startsWith('+')) {
-            formatted = '+' + formatted;
+            // Assume Indian number if no country code
+            if (formatted.length === 10) {
+              formatted = '+91' + formatted;
+            } else {
+              formatted = '+' + formatted;
+            }
           }
           return formatted;
         };
 
         const twilioPhone = formatPhoneNumber(process.env.TWILIO_PHONE_NUMBER);
-        const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
 
-        if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
-          const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
-          const smsMessage = `💰 New Payment Received!\n\nCustomer: ${finalCustomerName}\nService: ${finalServiceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${finalCustomerEmail || finalCustomerPhone || 'N/A'}`;
+        // Send SMS to admin (if MY_PHONE_NUMBER is configured)
+        if (process.env.MY_PHONE_NUMBER) {
+          const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
+          if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
+            const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
+            const smsMessage = `💰 New Payment Received!\n\nCustomer: ${finalCustomerName}\nService: ${finalServiceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${finalCustomerEmail || finalCustomerPhone || 'N/A'}`;
 
-          await client.messages.create({
-            body: smsMessage,
-            from: twilioPhone,
-            to: recipientPhone,
-          });
+            try {
+              await client.messages.create({
+                body: smsMessage,
+                from: twilioPhone,
+                to: recipientPhone,
+              });
+              console.log(`[${environment}] ✅ Admin SMS notification sent to ${recipientPhone}`);
+            } catch (adminSmsError) {
+              console.error(`[${environment}] ⚠️  Error sending admin SMS:`, adminSmsError.message || adminSmsError);
+              console.error(`[${environment}] SMS Error Details:`, {
+                code: adminSmsError.code,
+                status: adminSmsError.status,
+                moreInfo: adminSmsError.moreInfo
+              });
+            }
+          }
+        }
 
-          console.log(`[${environment}] ✅ SMS notification sent to ${recipientPhone}`);
+        // Send SMS to customer (if customer phone is available)
+        if (finalCustomerPhone) {
+          const customerPhone = formatPhoneNumber(finalCustomerPhone);
+          if (twilioPhone && customerPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(customerPhone)) {
+            const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
+            const customerSmsMessage = `✅ Payment Successful!\n\nDear ${finalCustomerName},\n\nYour payment of ₹${amountInRupees} for ${finalServiceName} has been received.\n\nTransaction ID: ${transactionId || merchantTransactionId}\n\nThank you for your payment!`;
+
+            try {
+              await client.messages.create({
+                body: customerSmsMessage,
+                from: twilioPhone,
+                to: customerPhone,
+              });
+              console.log(`[${environment}] ✅ Customer SMS notification sent to ${customerPhone}`);
+            } catch (customerSmsError) {
+              console.error(`[${environment}] ⚠️  Error sending customer SMS:`, customerSmsError.message || customerSmsError);
+              console.error(`[${environment}] Customer SMS Error Details:`, {
+                code: customerSmsError.code,
+                status: customerSmsError.status,
+                moreInfo: customerSmsError.moreInfo
+              });
+            }
+          }
         }
       } catch (smsError) {
-        console.error(`[${environment}] ⚠️  Error sending SMS notification:`, smsError.message || smsError);
+        console.error(`[${environment}] ⚠️  Error in SMS notification setup:`, smsError.message || smsError);
         // Don't fail the webhook if SMS fails
       }
     }

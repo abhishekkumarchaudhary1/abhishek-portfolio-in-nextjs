@@ -352,8 +352,8 @@ export async function POST(request) {
             willSend: customerEmail && customerName
           });
           
-          // Send emails if we have customer details (even if marked as sent, to ensure delivery)
-          if (customerEmail && customerName) {
+          // Send emails only if not already sent by webhook (avoid duplicates)
+          if (customerEmail && customerName && !emailsSent) {
             console.log('📧 Sending payment notification emails (verification fallback)...');
             console.log('📧 Customer details:', {
               name: customerName,
