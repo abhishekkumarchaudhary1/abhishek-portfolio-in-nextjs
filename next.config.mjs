@@ -15,7 +15,6 @@ const nextConfig = {
   // These help with hydration errors
   reactStrictMode: true,
   experimental: {
-    optimizeFonts: true,
     scrollRestoration: true,
   },
 };

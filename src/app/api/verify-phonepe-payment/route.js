@@ -107,23 +107,18 @@ export async function POST(request) {
     if (!orderStatus) {
       const sdkError = lastError;
       
-      console.log('=== PhonePe SDK Response Received ===');
-      console.log('Order State:', orderStatus.state);
-      console.log('Order ID:', orderStatus.order_id);
-      console.log('Amount:', orderStatus.amount);
-      console.log('Payment Details Count:', orderStatus.payment_details?.length || 0);
+      if (!sdkError) {
+        return NextResponse.json(
+          { 
+            success: false,
+            error: 'Failed to verify payment status',
+            details: 'No order status received and no error information available',
+            suggestion: 'Please try again or contact support'
+          },
+          { status: 500 }
+        );
+      }
       
-      // Log full response for debugging
-      console.log('=== Full Order Status Response ===');
-      console.log(JSON.stringify({
-        state: orderStatus.state,
-        orderId: orderStatus.order_id,
-        amount: orderStatus.amount,
-        paymentDetails: orderStatus.payment_details,
-        paymentDetailsCount: orderStatus.payment_details?.length || 0
-      }, null, 2));
-
-    } catch (sdkError) {
       console.error('PhonePe SDK Error:', {
         error: sdkError.message,
         code: sdkError.code,
