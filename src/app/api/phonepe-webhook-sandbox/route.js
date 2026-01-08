@@ -285,26 +285,31 @@ async function handlePaymentSuccess(data, environment) {
     console.log(`[${environment}] ✅ Payment record saved: ${merchantTransactionId}`);
 
     // Send confirmation email to customer
+    // Note: Email service expects amount in paise (will convert to rupees)
     if (finalCustomerEmail && finalCustomerName) {
       await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
         transactionId,
         merchantTransactionId,
-        amount: paymentData.amount,
+        amount: amount, // Pass raw amount in paise (email service will convert)
         serviceName: finalServiceName
       });
     }
 
     // Send notification to admin
+    // Note: Email service expects amount in paise (will convert to rupees)
     await sendAdminPaymentNotification({
       customerName: finalCustomerName,
       customerEmail: finalCustomerEmail,
       customerPhone: finalCustomerPhone,
       transactionId,
       merchantTransactionId,
-      amount: paymentData.amount,
+      amount: amount, // Pass raw amount in paise (email service will convert)
       serviceName: finalServiceName,
       message: customerMessage
     });
+    
+    // Mark emails as sent to prevent duplicates from verification endpoint
+    updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
 
     // Send SMS notification if Twilio is configured
     if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
@@ -328,8 +333,8 @@ async function handlePaymentSuccess(data, environment) {
         const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
 
         if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
-          const amountInRupees = (amount / 100).toFixed(2);
-          const smsMessage = `💰 New Payment Received!\n\nCustomer: ${customerName}\nService: ${serviceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${customerEmail || customerPhone || 'N/A'}`;
+          const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
+          const smsMessage = `💰 New Payment Received!\n\nCustomer: ${finalCustomerName}\nService: ${finalServiceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${finalCustomerEmail || finalCustomerPhone || 'N/A'}`;
 
           await client.messages.create({
             body: smsMessage,
