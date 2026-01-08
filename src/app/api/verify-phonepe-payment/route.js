@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { StandardCheckoutClient, Env } from 'pg-sdk-node';
+import { getPayment } from '../../utils/paymentStorage';
 
 /**
  * PhonePe Payment Verification using Official SDK
@@ -65,12 +66,46 @@ export async function POST(request) {
       env
     );
 
-    // Get order status using SDK
+    // Get order status using SDK with retry logic
+    // PhonePe sometimes needs a moment to process the order after payment
     console.log('=== Calling PhonePe SDK getOrderStatus ===');
     let orderStatus;
-    try {
-      console.log('Calling client.getOrderStatus with:', merchantTransactionId);
-      orderStatus = await client.getOrderStatus(merchantTransactionId);
+    let lastError = null;
+    const maxRetries = 3;
+    const retryDelay = 2000; // 2 seconds
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`Attempt ${attempt}/${maxRetries}: Calling client.getOrderStatus with:`, merchantTransactionId);
+        orderStatus = await client.getOrderStatus(merchantTransactionId);
+        
+        // If we get here, the call was successful
+        console.log(`✅ Order status retrieved successfully on attempt ${attempt}`);
+        break; // Exit retry loop
+        
+      } catch (sdkError) {
+        lastError = sdkError;
+        console.error(`Attempt ${attempt}/${maxRetries} failed:`, {
+          error: sdkError.message,
+          code: sdkError.code,
+          httpStatusCode: sdkError.httpStatusCode
+        });
+        
+        // If it's a 404 (ORDER_NOT_FOUND) and we have retries left, wait and retry
+        if (sdkError.httpStatusCode === 404 && attempt < maxRetries) {
+          console.log(`Order not found yet. Waiting ${retryDelay}ms before retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue; // Retry
+        } else {
+          // For other errors or last attempt, break and handle error
+          break;
+        }
+      }
+    }
+    
+    // If we still don't have orderStatus, handle the error
+    if (!orderStatus) {
+      const sdkError = lastError;
       
       console.log('=== PhonePe SDK Response Received ===');
       console.log('Order State:', orderStatus.state);
@@ -101,8 +136,63 @@ export async function POST(request) {
       let suggestion = '';
 
       if (sdkError.httpStatusCode === 404) {
-        errorDetails = 'Order not found. The merchant transaction ID may be incorrect.';
-        suggestion = 'Please verify the transaction ID and try again.';
+        // Check if we have a local payment record (might be pending webhook update)
+        const localPayment = getPayment(merchantTransactionId);
+        console.log('Order not found in PhonePe, checking local storage...');
+        console.log('Local payment found:', !!localPayment);
+        
+        if (localPayment) {
+          console.log('Local payment status:', localPayment.status);
+          console.log('Local payment details:', {
+            merchantTransactionId: localPayment.merchantTransactionId,
+            status: localPayment.status,
+            amount: localPayment.amount,
+            environment: localPayment.environment
+          });
+          
+          // If we have a local record, return it with a note that PhonePe verification failed
+          // This allows the user to see their payment info even if PhonePe API is slow
+          return NextResponse.json({
+            success: localPayment.status === 'completed' || localPayment.status === 'success',
+            paymentStatus: localPayment.paymentState || localPayment.status?.toUpperCase() || 'PENDING',
+            orderId: localPayment.transactionId || merchantTransactionId,
+            merchantTransactionId: merchantTransactionId,
+            transactionId: localPayment.transactionId || merchantTransactionId,
+            amount: localPayment.amount,
+            serviceId: localPayment.serviceId,
+            serviceName: localPayment.serviceName,
+            customerName: localPayment.customerName,
+            customerEmail: localPayment.customerEmail,
+            customerPhone: localPayment.customerPhone,
+            paymentMode: localPayment.paymentMode,
+            paymentState: localPayment.paymentState || localPayment.status?.toUpperCase(),
+            isPending: localPayment.status === 'pending',
+            isFailed: localPayment.status === 'failed',
+            isCompleted: localPayment.status === 'completed' || localPayment.status === 'success',
+            warning: 'PhonePe verification temporarily unavailable. Using local payment record.',
+            note: 'If payment was successful on PhonePe, it will be updated via webhook shortly.'
+          });
+        }
+        
+        errorDetails = 'ORDER_NOT_FOUND: The order was not found in PhonePe system.';
+        suggestion = `This can happen if:\n\n` +
+          `1. ⏱️  Timing Issue: PhonePe may need a few seconds to process the payment.\n` +
+          `   - Try refreshing the page in 5-10 seconds\n` +
+          `   - The payment might still be processing\n\n` +
+          `2. 🔍 ID Mismatch: The transaction ID might not match.\n` +
+          `   - Merchant Transaction ID used: ${merchantTransactionId}\n` +
+          `   - Verify this matches the ID from the payment creation\n\n` +
+          `3. 🌐 Environment Mismatch: Make sure you're checking the correct environment.\n` +
+          `   - Current Environment: ${environment}\n` +
+          `   - SANDBOX orders can only be verified in SANDBOX\n` +
+          `   - PRODUCTION orders can only be verified in PRODUCTION\n\n` +
+          `4. ✅ Payment Status: Check PhonePe Dashboard directly.\n` +
+          `   - Log into PhonePe Merchant Dashboard\n` +
+          `   - Look for the order with ID: ${merchantTransactionId}\n` +
+          `   - Verify the payment status there\n\n` +
+          `5. 🔄 Retry: The system already retried ${maxRetries} times.\n` +
+          `   - If payment was successful on PhonePe, it should appear soon\n` +
+          `   - Wait 30 seconds and refresh the page`;
       } else if (sdkError.httpStatusCode === 401 || sdkError.httpStatusCode === 403) {
         errorDetails = 'Authentication failed. Invalid credentials.';
         suggestion = 'Please verify your PHONEPE_CLIENT_ID and PHONEPE_CLIENT_SECRET are correct.';
