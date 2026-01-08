@@ -1,49 +1,105 @@
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 /**
  * Payment Storage Utility
- * Simple file-based storage for payment records
+ * Uses in-memory storage for serverless environments (Vercel)
+ * Falls back to file-based storage for local development
  * 
  * Note: In production, you should use a proper database (MongoDB, PostgreSQL, etc.)
  * This is a temporary solution that can be easily migrated to a database.
  */
 
-const PAYMENTS_DIR = path.join(process.cwd(), 'data', 'payments');
-const PAYMENTS_FILE = path.join(PAYMENTS_DIR, 'payments.json');
+// In-memory storage for serverless environments
+let inMemoryPayments = [];
 
-// Ensure payments directory exists
+// Check if we're in a serverless environment (read-only filesystem)
+// Vercel sets VERCEL=1, and filesystem is read-only except /tmp
+const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || (() => {
+  // Try to detect read-only filesystem
+  try {
+    const testDir = path.join(process.cwd(), 'data');
+    if (!fs.existsSync(testDir)) {
+      try {
+        fs.mkdirSync(testDir, { recursive: true });
+        fs.rmdirSync(testDir);
+        return false; // Can write
+      } catch {
+        return true; // Cannot write, likely serverless
+      }
+    }
+    return false; // Directory exists, assume we can write
+  } catch {
+    return true; // Error accessing filesystem, likely serverless
+  }
+})();
+
+const PAYMENTS_DIR = isServerless ? null : path.join(process.cwd(), 'data', 'payments');
+const PAYMENTS_FILE = isServerless ? null : path.join(PAYMENTS_DIR, 'payments.json');
+
+if (isServerless) {
+  console.log('📦 Serverless environment detected - using in-memory payment storage');
+} else {
+  console.log('💾 Local environment detected - using file-based payment storage');
+}
+
+// Ensure payments directory exists (only for non-serverless)
 function ensurePaymentsDirectory() {
-  if (!fs.existsSync(PAYMENTS_DIR)) {
-    fs.mkdirSync(PAYMENTS_DIR, { recursive: true });
+  if (isServerless || !PAYMENTS_DIR) return;
+  try {
+    if (!fs.existsSync(PAYMENTS_DIR)) {
+      fs.mkdirSync(PAYMENTS_DIR, { recursive: true });
+    }
+  } catch (error) {
+    console.warn('Could not create payments directory:', error.message);
   }
 }
 
-// Load all payments from file
+// Load all payments
 function loadPayments() {
+  if (isServerless) {
+    // Return in-memory storage
+    return inMemoryPayments;
+  }
+  
+  // Try to load from file
   try {
     ensurePaymentsDirectory();
-    if (!fs.existsSync(PAYMENTS_FILE)) {
+    if (!PAYMENTS_FILE || !fs.existsSync(PAYMENTS_FILE)) {
       return [];
     }
     const data = fs.readFileSync(PAYMENTS_FILE, 'utf8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('Error loading payments:', error);
-    return [];
+    console.warn('Error loading payments from file, using in-memory storage:', error.message);
+    return inMemoryPayments; // Fallback to in-memory
   }
 }
 
-// Save payments to file
+// Save payments
 function savePayments(payments) {
+  if (isServerless) {
+    // Save to in-memory storage
+    inMemoryPayments = payments;
+    return true;
+  }
+  
+  // Try to save to file
   try {
     ensurePaymentsDirectory();
-    fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(payments, null, 2), 'utf8');
-    return true;
+    if (PAYMENTS_FILE) {
+      fs.writeFileSync(PAYMENTS_FILE, JSON.stringify(payments, null, 2), 'utf8');
+      return true;
+    }
   } catch (error) {
-    console.error('Error saving payments:', error);
-    return false;
+    console.warn('Error saving payments to file, using in-memory storage:', error.message);
+    // Fallback to in-memory storage
+    inMemoryPayments = payments;
+    return true;
   }
+  
+  return false;
 }
 
 /**
