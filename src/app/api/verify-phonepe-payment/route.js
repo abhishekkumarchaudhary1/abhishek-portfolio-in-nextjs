@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { StandardCheckoutClient, Env } from 'pg-sdk-node';
-import { getPayment, updatePaymentStatus, trySetEmailsSent } from '../../utils/paymentStorage';
-import { sendPaymentSuccessEmail, sendAdminPaymentNotification } from '../../utils/emailService';
-import twilio from 'twilio';
+import { getPayment } from '../../utils/paymentStorage';
+// NOTE: Email/SMS notifications are now handled ONLY by webhooks to prevent duplicates in serverless environments
 
 /**
  * PhonePe Payment Verification using Official SDK
@@ -320,265 +319,25 @@ export async function POST(request) {
       isCompleted: isSuccess
     };
     
-    // If payment is successful, send notifications (as fallback if webhook didn't trigger)
+    // NOTE: Email/SMS notifications are now handled ONLY by the webhook endpoint
+    // This prevents duplicate notifications in serverless environments where
+    // in-memory storage doesn't persist across function invocations.
+    // The webhook is the authoritative source for payment notifications.
     if (isSuccess) {
-      try {
-        console.log('📧 Payment successful - Checking for notification sending...');
-        
-        // Get payment record to retrieve customer details
-        const localPayment = getPayment(merchantTransactionId);
-        
-        console.log('📋 Local payment record:', {
-          found: !!localPayment,
-          hasCustomerName: !!localPayment?.customerName,
-          hasCustomerEmail: !!localPayment?.customerEmail,
-          hasServiceName: !!localPayment?.serviceName,
-          emailsSent: localPayment?.emailsSent
+      console.log('✅ Payment verified successfully');
+      console.log('📧 Notifications are handled by webhook - skipping verification endpoint notifications');
+      
+      // Log payment details for debugging
+      const localPayment = getPayment(merchantTransactionId);
+      if (localPayment) {
+        console.log('📋 Local payment record found:', {
+          customerName: localPayment.customerName,
+          customerEmail: localPayment.customerEmail,
+          serviceName: localPayment.serviceName,
+          emailsSent: localPayment.emailsSent || 'N/A (handled by webhook)'
         });
-        
-        if (localPayment) {
-          const customerName = localPayment.customerName;
-          const customerEmail = localPayment.customerEmail;
-          const customerPhone = localPayment.customerPhone;
-          const serviceName = localPayment.serviceName;
-          const customerMessage = localPayment.customerMessage;
-          
-          // Atomically try to set emailsSent flag (only one process can succeed)
-          // This prevents race conditions where both webhook and verification try to send emails
-          const canSendEmails = trySetEmailsSent(merchantTransactionId);
-          
-          console.log('📧 Email sending check:', {
-            canSendEmails,
-            hasCustomerEmail: !!customerEmail,
-            hasCustomerName: !!customerName,
-            willSend: customerEmail && customerName && canSendEmails
-          });
-          
-          // Send emails only if we successfully set the flag (atomic operation prevents duplicates)
-          if (customerEmail && customerName && canSendEmails) {
-            // Update status to completed
-            updatePaymentStatus(merchantTransactionId, 'completed', {});
-            console.log('📧 Got permission to send emails (atomic lock acquired)');
-            
-            console.log('📧 Sending payment notification emails (verification fallback)...');
-            console.log('📧 Customer details:', {
-              name: customerName,
-              email: customerEmail,
-              phone: customerPhone,
-              service: serviceName
-            });
-            
-            try {
-              console.log('📧 Attempting to send customer email to:', customerEmail);
-              // Send customer confirmation email
-              const customerEmailResult = await sendPaymentSuccessEmail(customerEmail, customerName, {
-                transactionId: finalTransactionId,
-                merchantTransactionId: merchantTransactionId,
-                amount: orderStatus.amount,
-                serviceName: serviceName,
-                customerMessage: customerMessage
-              });
-              // sendPaymentSuccessEmail returns the PDF path (or true if no PDF)
-              const pdfPath = typeof customerEmailResult === 'string' ? customerEmailResult : null;
-              console.log('📧 Customer email sent:', customerEmailResult ? 'SUCCESS' : 'FAILED');
-              
-              console.log('📧 Attempting to send admin notification emails...');
-              // Send admin notification email (with PDF receipt attachment)
-              const adminEmailResult = await sendAdminPaymentNotification({
-                customerName,
-                customerEmail,
-                customerPhone,
-                transactionId: finalTransactionId,
-                merchantTransactionId: merchantTransactionId,
-                amount: orderStatus.amount,
-                serviceName: serviceName,
-                message: customerMessage,
-                pdfPath // Include PDF path for attachment
-              });
-              console.log('📧 Admin email sent:', adminEmailResult ? 'SUCCESS' : 'FAILED');
-              
-              // Clean up PDF file after both emails are sent
-              if (pdfPath) {
-                try {
-                  const fs = require('fs');
-                  if (fs.existsSync(pdfPath)) {
-                    fs.unlinkSync(pdfPath);
-                    console.log('🗑️  Temporary PDF file cleaned up:', pdfPath);
-                  }
-                } catch (cleanupError) {
-                  console.warn('⚠️  Could not delete temporary PDF file:', cleanupError.message);
-                }
-              }
-              
-              // Emails already marked as sent above (before sending to prevent race conditions)
-              if (customerEmailResult && adminEmailResult) {
-                console.log('✅ Payment notification emails sent successfully');
-              } else {
-                console.log('⚠️  Some emails failed to send, but emailsSent flag already set to prevent duplicates');
-              }
-            } catch (emailError) {
-              console.error('❌ Error sending emails:', emailError);
-              console.error('❌ Email error details:', {
-                message: emailError.message,
-                stack: emailError.stack,
-                name: emailError.name
-              });
-              // Don't throw - we want verification to succeed even if emails fail
-            }
-            
-            // Send SMS notification if Twilio is configured (same pattern as contact form)
-            console.log('📱 Checking Twilio configuration for SMS (verification endpoint)...');
-            console.log('Twilio Account SID:', process.env.TWILIO_ACCOUNT_SID ? 'Present' : 'Missing');
-            console.log('Twilio Auth Token:', process.env.TWILIO_AUTH_TOKEN ? 'Present' : 'Missing');
-            console.log('Twilio Phone Number:', process.env.TWILIO_PHONE_NUMBER || 'Missing');
-            console.log('My Phone Number:', process.env.MY_PHONE_NUMBER || 'Missing');
-            console.log('Customer Phone:', customerPhone || 'Not provided');
-            
-            // Send admin SMS first (same as contact form - requires MY_PHONE_NUMBER)
-            if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
-              try {
-                const client = twilio(
-                  process.env.TWILIO_ACCOUNT_SID,
-                  process.env.TWILIO_AUTH_TOKEN
-                );
-
-                // Format phone numbers to E.164 format (same as contact form)
-                const formatPhoneNumber = (phone) => {
-                  if (!phone) return null;
-                  // Remove all spaces, dashes, and parentheses
-                  let formatted = phone.replace(/[\s\-\(\)]/g, '');
-                  
-                  // If already has country code, just ensure it has +
-                  if (!formatted.startsWith('+')) {
-                    // If it's a 10-digit Indian number, add +91
-                    if (formatted.length === 10 && /^[6-9]\d{9}$/.test(formatted)) {
-                      formatted = '+91' + formatted;
-                    } else {
-                      // Otherwise just add +
-                      formatted = '+' + formatted;
-                    }
-                  }
-                  return formatted;
-                };
-
-                const twilioPhone = formatPhoneNumber(process.env.TWILIO_PHONE_NUMBER);
-                const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
-                
-                console.log('📱 Formatted Twilio Phone:', twilioPhone);
-                console.log('📱 Formatted Admin Phone:', recipientPhone);
-
-                if (!twilioPhone || !recipientPhone) {
-                  throw new Error('Invalid phone number format');
-                }
-
-                // Validate phone number format (same as contact form)
-                if (!/^\+[1-9]\d{1,14}$/.test(twilioPhone)) {
-                  throw new Error(`Invalid Twilio phone number format: ${twilioPhone}. Must be in E.164 format (e.g., +1234567890)`);
-                }
-
-                if (!/^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
-                  throw new Error(`Invalid recipient phone number format: ${recipientPhone}. Must be in E.164 format (e.g., +919876543210)`);
-                }
-
-                // Send SMS to admin (your number - should always work)
-                const amountInRupees = (orderStatus.amount / 100).toFixed(2);
-                const smsMessage = `💰 New Payment Received!\n\nCustomer: ${customerName}\nService: ${serviceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${finalTransactionId || merchantTransactionId}\n\nContact: ${customerEmail || customerPhone || 'N/A'}`;
-
-                try {
-                  console.log('📱 Attempting to send admin SMS to', recipientPhone, '...');
-                  const adminSmsResponse = await client.messages.create({
-                    body: smsMessage,
-                    from: twilioPhone,
-                    to: recipientPhone,
-                  });
-                  console.log('✅ Admin SMS notification sent successfully to', recipientPhone);
-                  console.log('📱 Admin SMS Response:', {
-                    sid: adminSmsResponse.sid,
-                    status: adminSmsResponse.status,
-                    to: adminSmsResponse.to,
-                    from: adminSmsResponse.from,
-                    errorCode: adminSmsResponse.errorCode,
-                    errorMessage: adminSmsResponse.errorMessage
-                  });
-                } catch (adminSmsError) {
-                  // Log SMS error with helpful message (same as contact form)
-                  if (adminSmsError.code === 21659 || adminSmsError.message?.includes('not a Twilio phone number')) {
-                    console.error('❌ SMS Error: The phone number used for TWILIO_PHONE_NUMBER is not a valid Twilio number.');
-                    console.error('Please ensure you are using a phone number you own in your Twilio account.');
-                    console.error('To get a Twilio number: Go to Twilio Console → Phone Numbers → Manage → Buy a number');
-                    console.error('Current TWILIO_PHONE_NUMBER:', process.env.TWILIO_PHONE_NUMBER);
-                  } else {
-                    console.error('❌ Error sending admin SMS:', adminSmsError.message || adminSmsError);
-                    console.error('SMS Error Details:', {
-                      code: adminSmsError.code,
-                      status: adminSmsError.status,
-                      moreInfo: adminSmsError.moreInfo
-                    });
-                  }
-                }
-
-                // Send SMS to customer (if customer phone is available)
-                if (customerPhone) {
-                  const formattedCustomerPhone = formatPhoneNumber(customerPhone);
-                  console.log('📱 Formatted Customer Phone:', formattedCustomerPhone);
-                  
-                  if (twilioPhone && formattedCustomerPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(formattedCustomerPhone)) {
-                    const amountInRupees = (orderStatus.amount / 100).toFixed(2);
-                    const customerSmsMessage = `✅ Payment Successful!\n\nDear ${customerName},\n\nYour payment of ₹${amountInRupees} for ${serviceName} has been received.\n\nTransaction ID: ${finalTransactionId || merchantTransactionId}\n\nThank you for your payment!`;
-
-                    try {
-                      console.log('📱 Attempting to send customer SMS to', formattedCustomerPhone, '...');
-                      const customerSmsResponse = await client.messages.create({
-                        body: customerSmsMessage,
-                        from: twilioPhone,
-                        to: formattedCustomerPhone,
-                      });
-                      console.log('✅ Customer SMS notification sent successfully to', formattedCustomerPhone);
-                      console.log('📱 Customer SMS Response:', {
-                        sid: customerSmsResponse.sid,
-                        status: customerSmsResponse.status,
-                        to: customerSmsResponse.to,
-                        from: customerSmsResponse.from,
-                        errorCode: customerSmsResponse.errorCode,
-                        errorMessage: customerSmsResponse.errorMessage
-                      });
-                    } catch (customerSmsError) {
-                      console.error('❌ Error sending customer SMS:', customerSmsError.message || customerSmsError);
-                      console.error('Customer SMS Error Details:', {
-                        code: customerSmsError.code,
-                        status: customerSmsError.status,
-                        moreInfo: customerSmsError.moreInfo
-                      });
-                    }
-                  } else {
-                    console.warn('⚠️  Customer SMS skipped: Invalid phone number format. Twilio:', twilioPhone, 'Customer:', formattedCustomerPhone);
-                  }
-                } else {
-                  console.warn('⚠️  Customer SMS skipped: Customer phone not provided');
-                }
-              } catch (smsError) {
-                console.error('❌ Error in SMS notification setup:', smsError.message || smsError);
-                console.error('SMS Setup Error Stack:', smsError.stack);
-                // Don't fail if SMS fails
-              }
-            } else {
-              console.warn('⚠️  SMS notifications skipped: Twilio not fully configured');
-            }
-          } else if (!canSendEmails) {
-            console.log('ℹ️  Emails already sent for this payment (skipping to avoid duplicates)');
-          } else {
-            console.log('⚠️  Cannot send emails - missing customer details:', {
-              hasEmail: !!customerEmail,
-              hasName: !!customerName
-            });
-          }
-        } else {
-          console.log('⚠️  No local payment record found - cannot send notifications');
-          console.log('⚠️  Merchant Transaction ID used:', merchantTransactionId);
-        }
-      } catch (notificationError) {
-        console.error('⚠️  Error sending payment notifications:', notificationError);
-        // Don't fail the verification if notifications fail
+      } else {
+        console.log('📋 No local payment record (expected in serverless - webhook handles storage)');
       }
     }
     
