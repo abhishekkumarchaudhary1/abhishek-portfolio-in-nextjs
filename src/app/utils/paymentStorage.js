@@ -14,6 +14,10 @@ import os from 'os';
 // In-memory storage for serverless environments
 let inMemoryPayments = [];
 
+// Mutex lock for atomic operations (prevents race conditions)
+let writeLock = Promise.resolve();
+const lockEmailsSent = new Set(); // Tracks which transactions have emailsSent=true
+
 // Check if we're in a serverless environment (read-only filesystem)
 // Vercel sets VERCEL=1, and filesystem is read-only except /tmp
 const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME || (() => {
@@ -184,6 +188,60 @@ export function updatePaymentStatus(merchantTransactionId, status, additionalDat
   } catch (error) {
     console.error('❌ Error updating payment status:', error);
     throw error;
+  }
+}
+
+/**
+ * Atomically check and set emailsSent flag (returns true if successfully set, false if already set)
+ * This prevents race conditions where multiple processes try to send emails simultaneously
+ * Uses both in-memory lock (instant) and persistent storage (durable)
+ */
+export function trySetEmailsSent(merchantTransactionId) {
+  try {
+    // FIRST CHECK: In-memory lock (instant, prevents race conditions from concurrent calls)
+    if (lockEmailsSent.has(merchantTransactionId)) {
+      console.log(`🔒 [MEMORY LOCK] Emails already being sent for ${merchantTransactionId} - skipping`);
+      return false;
+    }
+    
+    // Immediately set the in-memory lock to prevent concurrent calls
+    lockEmailsSent.add(merchantTransactionId);
+    console.log(`🔐 [MEMORY LOCK] Acquired lock for ${merchantTransactionId}`);
+    
+    // SECOND CHECK: Persistent storage (durable, survives restarts)
+    const payments = loadPayments();
+    const paymentIndex = payments.findIndex(
+      p => p.merchantTransactionId === merchantTransactionId
+    );
+
+    if (paymentIndex >= 0) {
+      const payment = payments[paymentIndex];
+      // If emailsSent is already true in storage, someone else already handled it
+      if (payment.emailsSent) {
+        console.log(`📧 [STORAGE] Emails already sent for ${merchantTransactionId} - skipping`);
+        return false;
+      }
+      
+      // Set emailsSent to true in persistent storage
+      payments[paymentIndex] = {
+        ...payment,
+        emailsSent: true,
+        updatedAt: new Date().toISOString()
+      };
+      savePayments(payments);
+      console.log(`✅ Atomically set emailsSent: true for ${merchantTransactionId}`);
+      return true; // Successfully set, this process should send emails
+    } else {
+      console.warn(`⚠️  Payment not found: ${merchantTransactionId}`);
+      // Release the lock since we couldn't process
+      lockEmailsSent.delete(merchantTransactionId);
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error in trySetEmailsSent:', error);
+    // Release the lock on error
+    lockEmailsSent.delete(merchantTransactionId);
+    return false;
   }
 }
 

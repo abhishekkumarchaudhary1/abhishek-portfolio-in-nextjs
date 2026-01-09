@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
@@ -9,6 +9,9 @@ function PaymentSuccessContent() {
   const router = useRouter();
   const [paymentStatus, setPaymentStatus] = useState('verifying');
   const [paymentData, setPaymentData] = useState(null);
+  
+  // Prevent duplicate verification calls (React 18 Strict Mode runs useEffect twice in dev)
+  const verificationInitiated = useRef(false);
 
   const transactionId = searchParams.get('transactionId');
 
@@ -18,9 +21,17 @@ function PaymentSuccessContent() {
       return;
     }
 
+    // Prevent duplicate verification calls (React 18 Strict Mode)
+    if (verificationInitiated.current) {
+      console.log('⚠️  Verification already initiated, skipping duplicate call');
+      return;
+    }
+    verificationInitiated.current = true;
+
     // Verify payment status
     const verifyPayment = async () => {
       try {
+        console.log('📧 Initiating payment verification for:', transactionId);
         const response = await fetch('/api/verify-phonepe-payment', {
           method: 'POST',
           headers: {
@@ -65,11 +76,37 @@ function PaymentSuccessContent() {
 
   const handlePrintReceipt = () => {
     const printWindow = window.open('', '_blank');
+    
+    // Extract customer details from metaInfo (same as email PDF)
+    const metaInfo = paymentData?.metaInfo || {};
+    const customerName = metaInfo.udf1 || paymentData?.customerName || '';
+    const customerEmail = metaInfo.udf2 || paymentData?.customerEmail || '';
+    const customerPhone = metaInfo.udf3 || paymentData?.customerPhone || '';
+    const serviceName = metaInfo.udf4 || paymentData?.serviceName || '';
+    
+    // Extract customer message from udf5
+    let customerMessage = '';
+    if (metaInfo.udf5) {
+      const udf5Parts = metaInfo.udf5.split('|');
+      if (udf5Parts.length > 1) {
+        try {
+          customerMessage = atob(udf5Parts[1]); // Decode base64
+        } catch (e) {
+          console.error('Error decoding customer message:', e);
+        }
+      }
+    }
+    
+    // Use the correct transaction ID (OMO... is in orderId or transactionId)
+    // Priority: orderId (OMO...) > transactionId > merchantTransactionId
+    const actualTransactionId = paymentData?.orderId || paymentData?.transactionId || paymentData?.merchantTransactionId || '';
+    const receiptFilename = `receipt_${actualTransactionId}.pdf`;
+    
     const receiptContent = `
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Payment Receipt</title>
+          <title>${receiptFilename}</title>
           <style>
             @media print {
               body { margin: 0; }
@@ -79,182 +116,178 @@ function PaymentSuccessContent() {
               font-family: Arial, sans-serif;
               max-width: 600px;
               margin: 40px auto;
-              padding: 20px;
+              padding: 40px;
               background: white;
             }
             .receipt-header {
               text-align: center;
-              border-bottom: 2px solid #4F46E5;
-              padding-bottom: 20px;
-              margin-bottom: 30px;
+              margin-bottom: 40px;
             }
             .receipt-header h1 {
-              color: #4F46E5;
-              margin: 0;
-              font-size: 28px;
+              color: #667eea;
+              margin: 0 0 10px 0;
+              font-size: 32px;
+              font-weight: bold;
             }
             .receipt-header p {
               color: #666;
               margin: 5px 0;
+              font-size: 14px;
             }
-            .receipt-body {
+            .divider {
+              height: 2px;
+              background: #667eea;
               margin: 30px 0;
             }
-            .receipt-section {
-              margin-bottom: 25px;
-            }
-            .receipt-section h2 {
-              color: #333;
-              font-size: 18px;
-              border-bottom: 1px solid #eee;
-              padding-bottom: 10px;
-              margin-bottom: 15px;
+            .divider-light {
+              height: 1px;
+              background: #eee;
+              margin: 20px 0;
             }
             .receipt-row {
               display: flex;
               justify-content: space-between;
-              padding: 10px 0;
+              padding: 12px 0;
               border-bottom: 1px solid #f0f0f0;
             }
             .receipt-row:last-child {
               border-bottom: none;
             }
             .receipt-label {
-              font-weight: 600;
+              font-weight: bold;
               color: #666;
+              min-width: 180px;
             }
             .receipt-value {
               color: #333;
               text-align: right;
+              word-break: break-all;
+              flex: 1;
             }
-            .amount-highlight {
-              background: #f0f9ff;
-              padding: 15px;
-              border-radius: 8px;
-              margin: 20px 0;
-            }
-            .amount-highlight .receipt-value {
-              font-size: 24px;
-              font-weight: bold;
-              color: #059669;
-            }
-            .receipt-footer {
-              margin-top: 40px;
-              padding-top: 20px;
-              border-top: 2px solid #eee;
-              text-align: center;
-              color: #666;
+            .receipt-value-mono {
+              font-family: monospace;
               font-size: 12px;
             }
-            .success-badge {
-              display: inline-block;
-              background: #10b981;
-              color: white;
-              padding: 5px 15px;
-              border-radius: 20px;
-              font-size: 14px;
-              font-weight: 600;
-              margin-bottom: 20px;
+            .receipt-value-status {
+              color: #10b981;
+              font-weight: bold;
+            }
+            .total-section {
+              margin: 20px 0;
+            }
+            .total-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 15px 0;
+            }
+            .total-label {
+              font-size: 18px;
+              font-weight: bold;
+              color: #667eea;
+            }
+            .total-value {
+              font-size: 18px;
+              font-weight: bold;
+              color: #667eea;
+            }
+            .project-details {
+              margin-top: 30px;
+            }
+            .project-details h2 {
+              color: #667eea;
+              font-size: 16px;
+              font-weight: bold;
+              margin: 0 0 15px 0;
+              padding-bottom: 10px;
+              border-bottom: 2px solid #667eea;
+            }
+            .project-details-content {
+              color: #333;
+              white-space: pre-wrap;
+              word-break: break-word;
+              line-height: 1.6;
+            }
+            .receipt-footer {
+              margin-top: 50px;
+              padding-top: 20px;
+              text-align: center;
+              color: #666;
+              font-size: 11px;
+              line-height: 1.8;
             }
           </style>
         </head>
         <body>
           <div class="receipt-header">
-            <h1>Payment Receipt</h1>
-            <p>Abhishek Kumar Chaudhary</p>
-            <p>Full Stack Developer</p>
-            <div class="success-badge">✓ Payment Successful</div>
+            <h1>PAYMENT RECEIPT</h1>
+            <p>Pre-Registration Payment Confirmation</p>
           </div>
           
+          <div class="divider"></div>
+          
           <div class="receipt-body">
-            <div class="receipt-section">
-              <h2>Transaction Details</h2>
-              ${paymentData?.transactionId ? `
-                <div class="receipt-row">
-                  <span class="receipt-label">Transaction ID:</span>
-                  <span class="receipt-value">${paymentData.transactionId}</span>
-                </div>
-              ` : ''}
-              ${paymentData?.merchantTransactionId ? `
-                <div class="receipt-row">
-                  <span class="receipt-label">Order ID:</span>
-                  <span class="receipt-value">${paymentData.merchantTransactionId}</span>
-                </div>
-              ` : ''}
-              ${paymentData?.orderId && paymentData.orderId !== paymentData.transactionId ? `
-                <div class="receipt-row">
-                  <span class="receipt-label">Reference ID:</span>
-                  <span class="receipt-value">${paymentData.orderId}</span>
-                </div>
-              ` : ''}
+            ${customerName ? `
               <div class="receipt-row">
-                <span class="receipt-label">Payment Date:</span>
-                <span class="receipt-value">${new Date().toLocaleString('en-IN', { 
-                  timeZone: 'Asia/Kolkata',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</span>
-              </div>
-              ${paymentData?.paymentMode ? `
-                <div class="receipt-row">
-                  <span class="receipt-label">Payment Method:</span>
-                  <span class="receipt-value">${paymentData.paymentMode}</span>
-                </div>
-              ` : ''}
-            </div>
-
-            ${paymentData?.customerName || paymentData?.serviceName ? `
-              <div class="receipt-section">
-                <h2>Service Details</h2>
-                ${paymentData?.serviceName ? `
-                  <div class="receipt-row">
-                    <span class="receipt-label">Service:</span>
-                    <span class="receipt-value">${paymentData.serviceName}</span>
-                  </div>
-                ` : ''}
-                ${paymentData?.customerName ? `
-                  <div class="receipt-row">
-                    <span class="receipt-label">Customer Name:</span>
-                    <span class="receipt-value">${paymentData.customerName}</span>
-                  </div>
-                ` : ''}
-                ${paymentData?.customerEmail ? `
-                  <div class="receipt-row">
-                    <span class="receipt-label">Email:</span>
-                    <span class="receipt-value">${paymentData.customerEmail}</span>
-                  </div>
-                ` : ''}
-                ${paymentData?.customerPhone ? `
-                  <div class="receipt-row">
-                    <span class="receipt-label">Phone:</span>
-                    <span class="receipt-value">${paymentData.customerPhone}</span>
-                  </div>
-                ` : ''}
+                <span class="receipt-label">Customer Name:</span>
+                <span class="receipt-value">${customerName}</span>
               </div>
             ` : ''}
-
-            <div class="receipt-section">
-              <h2>Payment Summary</h2>
-              <div class="amount-highlight">
-                <div class="receipt-row">
-                  <span class="receipt-label">Amount Paid:</span>
-                  <span class="receipt-value">₹${paymentData?.amount ? (paymentData.amount / 100).toFixed(2) : '0.00'}</span>
-                </div>
-              </div>
+            ${serviceName ? `
               <div class="receipt-row">
-                <span class="receipt-label">Status:</span>
-                <span class="receipt-value" style="color: #059669; font-weight: 600;">✓ Completed</span>
+                <span class="receipt-label">Service:</span>
+                <span class="receipt-value">${serviceName}</span>
               </div>
+            ` : ''}
+            ${actualTransactionId ? `
+              <div class="receipt-row">
+                <span class="receipt-label">Transaction ID:</span>
+                <span class="receipt-value receipt-value-mono">${actualTransactionId}</span>
+              </div>
+            ` : ''}
+            ${paymentData?.merchantTransactionId ? `
+              <div class="receipt-row">
+                <span class="receipt-label">Merchant Order ID:</span>
+                <span class="receipt-value receipt-value-mono">${paymentData.merchantTransactionId}</span>
+              </div>
+            ` : ''}
+            <div class="receipt-row">
+              <span class="receipt-label">Payment Date:</span>
+              <span class="receipt-value">${new Date().toLocaleString('en-IN', { 
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}</span>
+            </div>
+            <div class="receipt-row">
+              <span class="receipt-label">Payment Status:</span>
+              <span class="receipt-value receipt-value-status">COMPLETED</span>
             </div>
           </div>
 
+          <div class="divider-light"></div>
+
+          <div class="total-section">
+            <div class="total-row">
+              <span class="total-label">Total Amount Paid:</span>
+              <span class="total-value">Rs. ${paymentData?.amount ? (paymentData.amount / 100).toFixed(2) : '0.00'}</span>
+            </div>
+          </div>
+
+          ${customerMessage ? `
+            <div class="divider"></div>
+            
+            <div class="project-details">
+              <h2>Project Details</h2>
+              <div class="project-details-content">${customerMessage}</div>
+            </div>
+          ` : ''}
+
           <div class="receipt-footer">
-            <p>This is a computer-generated receipt. No signature is required.</p>
-            <p>For any queries, contact: support@abhishek-chaudhary.com</p>
-            <p>Printed on: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+            <p>This is a computer-generated receipt.</p>
+            <p>For any queries, please contact: support@abhishek-chaudhary.com</p>
           </div>
         </body>
       </html>
@@ -262,6 +295,7 @@ function PaymentSuccessContent() {
     
     printWindow.document.write(receiptContent);
     printWindow.document.close();
+    printWindow.document.title = receiptFilename; // Set document title for print
     printWindow.focus();
     
     // Wait for content to load, then print

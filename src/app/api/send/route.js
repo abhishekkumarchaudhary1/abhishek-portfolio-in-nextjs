@@ -15,16 +15,31 @@ export async function POST(request) {
     const phoneDigits = phone ? phone.replace(/\D/g, '') : ''; // Remove non-digits
     const last4Digits = phoneDigits.length >= 4 ? phoneDigits.slice(-4) : phoneDigits || 'XXXX';
     
-    // Generate timestamp: DDMMMYYYYHHMMam/pm (e.g., 08jan20261010pm)
+    // Generate timestamp: DDMMMYYYYHHMMam/pm (e.g., 08jan20261010pm) in Indian Standard Time (IST)
     const now = new Date();
-    const day = String(now.getDate()).padStart(2, '0');
+    // Convert to Indian Standard Time (IST = UTC+5:30)
+    // Get IST time by formatting with timezone and parsing the components
+    const istFormatter = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: 'numeric',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    
+    const parts = istFormatter.formatToParts(now);
+    const day = parts.find(p => p.type === 'day').value;
+    const monthNum = parseInt(parts.find(p => p.type === 'month').value) - 1; // 0-indexed
+    const year = parts.find(p => p.type === 'year').value;
+    const hours24 = parseInt(parts.find(p => p.type === 'hour').value);
+    const minutes = parts.find(p => p.type === 'minute').value;
+    
     const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    const month = monthNames[now.getMonth()];
-    const year = now.getFullYear();
-    const hours24 = now.getHours();
+    const month = monthNames[monthNum];
     const hours12 = hours24 === 0 ? 12 : hours24 > 12 ? hours24 - 12 : hours24;
     const hours = String(hours12).padStart(2, '0');
-    const minutes = String(now.getMinutes()).padStart(2, '0');
     const ampm = hours24 >= 12 ? 'pm' : 'am';
     const timestamp = `${day}${month}${year}${hours}${minutes}${ampm}`;
     

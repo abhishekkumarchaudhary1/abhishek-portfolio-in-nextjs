@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import twilio from 'twilio';
 import fs from 'fs';
-import { savePayment, updatePaymentStatus, getPayment } from '../../utils/paymentStorage';
+import { savePayment, updatePaymentStatus, getPayment, trySetEmailsSent } from '../../utils/paymentStorage';
 import { sendPaymentSuccessEmail, sendAdminPaymentNotification, sendPaymentFailedEmail } from '../../utils/emailService';
 
 /**
@@ -347,128 +347,194 @@ async function handlePaymentSuccess(data, environment) {
     payment = savePayment(paymentData);
     console.log(`[${environment}] ✅ Payment record saved: ${merchantTransactionId}`);
 
-    // Send confirmation email to customer
-    // Note: Email service expects amount in paise (will convert to rupees)
-    let pdfPath = null;
-    if (finalCustomerEmail && finalCustomerName) {
-      const result = await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
+    // Re-fetch payment record to get latest emailsSent status (in case it was updated by another process)
+    const latestPayment = getPayment(merchantTransactionId);
+    const emailsAlreadySent = latestPayment?.emailsSent || payment?.emailsSent || false;
+    console.log(`[${environment}] 📧 Emails already sent check:`, {
+      fromLatestPayment: latestPayment?.emailsSent || false,
+      fromCurrentPayment: payment?.emailsSent || false,
+      finalDecision: emailsAlreadySent
+    });
+
+    // Send emails only if not already sent
+    if (!emailsAlreadySent) {
+      // Send confirmation email to customer
+      // Note: Email service expects amount in paise (will convert to rupees)
+      let pdfPath = null;
+      if (finalCustomerEmail && finalCustomerName) {
+        const result = await sendPaymentSuccessEmail(finalCustomerEmail, finalCustomerName, {
+          transactionId,
+          merchantTransactionId,
+          amount: amount, // Pass raw amount in paise (email service will convert)
+          serviceName: finalServiceName,
+          customerMessage: customerMessage
+        });
+        // sendPaymentSuccessEmail returns the PDF path (or true if no PDF)
+        pdfPath = typeof result === 'string' ? result : null;
+      }
+
+      // Send notification to admin (with PDF receipt attachment)
+      // Note: Email service expects amount in paise (will convert to rupees)
+      await sendAdminPaymentNotification({
+        customerName: finalCustomerName,
+        customerEmail: finalCustomerEmail,
+        customerPhone: finalCustomerPhone,
         transactionId,
         merchantTransactionId,
         amount: amount, // Pass raw amount in paise (email service will convert)
         serviceName: finalServiceName,
-        customerMessage: customerMessage
+        message: customerMessage,
+        pdfPath // Include PDF path for attachment
       });
-      // sendPaymentSuccessEmail returns the PDF path (or true if no PDF)
-      pdfPath = typeof result === 'string' ? result : null;
-    }
-
-    // Send notification to admin (with PDF receipt attachment)
-    // Note: Email service expects amount in paise (will convert to rupees)
-    await sendAdminPaymentNotification({
-      customerName: finalCustomerName,
-      customerEmail: finalCustomerEmail,
-      customerPhone: finalCustomerPhone,
-      transactionId,
-      merchantTransactionId,
-      amount: amount, // Pass raw amount in paise (email service will convert)
-      serviceName: finalServiceName,
-      message: customerMessage,
-      pdfPath // Include PDF path for attachment
-    });
-    
-    // Clean up PDF file after both emails are sent
-    if (pdfPath) {
-      try {
-        if (fs.existsSync(pdfPath)) {
-          fs.unlinkSync(pdfPath);
-          console.log(`[${environment}] 🗑️  Temporary PDF file cleaned up: ${pdfPath}`);
+      
+      // Clean up PDF file after both emails are sent
+      if (pdfPath) {
+        try {
+          if (fs.existsSync(pdfPath)) {
+            fs.unlinkSync(pdfPath);
+            console.log(`[${environment}] 🗑️  Temporary PDF file cleaned up: ${pdfPath}`);
+          }
+        } catch (cleanupError) {
+          console.warn(`[${environment}] ⚠️  Could not delete temporary PDF file:`, cleanupError.message);
         }
-      } catch (cleanupError) {
-        console.warn(`[${environment}] ⚠️  Could not delete temporary PDF file:`, cleanupError.message);
       }
+      
+      // Emails already marked as sent above (before sending to prevent race conditions)
+      console.log(`[${environment}] ✅ Emails sent successfully`);
+    } else {
+      console.log(`[${environment}] ℹ️  Emails already sent for this payment (skipping to avoid duplicates)`);
     }
-    
-    // Mark emails as sent to prevent duplicates from verification endpoint
-    updatePaymentStatus(merchantTransactionId, 'completed', { emailsSent: true });
 
-    // Send SMS notifications if Twilio is configured
-    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+    // Send SMS notifications if Twilio is configured (same pattern as contact form)
+    console.log(`[${environment}] 📱 Checking Twilio configuration for SMS...`);
+    console.log(`[${environment}] Twilio Account SID:`, process.env.TWILIO_ACCOUNT_SID ? 'Present' : 'Missing');
+    console.log(`[${environment}] Twilio Auth Token:`, process.env.TWILIO_AUTH_TOKEN ? 'Present' : 'Missing');
+    console.log(`[${environment}] Twilio Phone Number:`, process.env.TWILIO_PHONE_NUMBER || 'Missing');
+    console.log(`[${environment}] My Phone Number:`, process.env.MY_PHONE_NUMBER || 'Missing');
+    console.log(`[${environment}] Customer Phone:`, finalCustomerPhone || 'Not provided');
+    
+    // Send admin SMS first (requires MY_PHONE_NUMBER - same as contact form)
+    if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER && process.env.MY_PHONE_NUMBER) {
       try {
         const client = twilio(
           process.env.TWILIO_ACCOUNT_SID,
           process.env.TWILIO_AUTH_TOKEN
         );
 
-        // Format phone numbers to E.164 format
+        // Format phone numbers to E.164 format (same as contact form)
         const formatPhoneNumber = (phone) => {
           if (!phone) return null;
+          // Remove all spaces, dashes, and parentheses
           let formatted = phone.replace(/[\s\-\(\)]/g, '');
+          // Ensure it starts with +
           if (!formatted.startsWith('+')) {
-            // Assume Indian number if no country code
-            if (formatted.length === 10) {
-              formatted = '+91' + formatted;
-            } else {
-              formatted = '+' + formatted;
-            }
+            formatted = '+' + formatted;
           }
           return formatted;
         };
 
         const twilioPhone = formatPhoneNumber(process.env.TWILIO_PHONE_NUMBER);
+        const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
+        
+        console.log(`[${environment}] 📱 Formatted Twilio Phone:`, twilioPhone);
+        console.log(`[${environment}] 📱 Formatted Admin Phone:`, recipientPhone);
 
-        // Send SMS to admin (if MY_PHONE_NUMBER is configured)
-        if (process.env.MY_PHONE_NUMBER) {
-          const recipientPhone = formatPhoneNumber(process.env.MY_PHONE_NUMBER);
-          if (twilioPhone && recipientPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
-            const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
-            const smsMessage = `💰 New Payment Received!\n\nCustomer: ${finalCustomerName}\nService: ${finalServiceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${finalCustomerEmail || finalCustomerPhone || 'N/A'}`;
+        if (!twilioPhone || !recipientPhone) {
+          throw new Error('Invalid phone number format');
+        }
 
-            try {
-              await client.messages.create({
-                body: smsMessage,
-                from: twilioPhone,
-                to: recipientPhone,
-              });
-              console.log(`[${environment}] ✅ Admin SMS notification sent to ${recipientPhone}`);
-            } catch (adminSmsError) {
-              console.error(`[${environment}] ⚠️  Error sending admin SMS:`, adminSmsError.message || adminSmsError);
-              console.error(`[${environment}] SMS Error Details:`, {
-                code: adminSmsError.code,
-                status: adminSmsError.status,
-                moreInfo: adminSmsError.moreInfo
-              });
-            }
+        // Validate phone number format (same as contact form)
+        if (!/^\+[1-9]\d{1,14}$/.test(twilioPhone)) {
+          throw new Error(`Invalid Twilio phone number format: ${twilioPhone}. Must be in E.164 format (e.g., +1234567890)`);
+        }
+
+        if (!/^\+[1-9]\d{1,14}$/.test(recipientPhone)) {
+          throw new Error(`Invalid recipient phone number format: ${recipientPhone}. Must be in E.164 format (e.g., +919876543210)`);
+        }
+
+        // Send SMS to admin (your number - should always work)
+        const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
+        const smsMessage = `💰 New Payment Received!\n\nCustomer: ${finalCustomerName}\nService: ${finalServiceName}\nAmount: ₹${amountInRupees}\nTransaction ID: ${transactionId || merchantTransactionId}\n\nContact: ${finalCustomerEmail || finalCustomerPhone || 'N/A'}`;
+
+        try {
+          console.log(`[${environment}] 📱 Attempting to send admin SMS to ${recipientPhone}...`);
+          const adminSmsResponse = await client.messages.create({
+            body: smsMessage,
+            from: twilioPhone,
+            to: recipientPhone,
+          });
+          console.log(`[${environment}] ✅ Admin SMS notification sent to ${recipientPhone}`);
+          console.log(`[${environment}] 📱 Admin SMS Response:`, {
+            sid: adminSmsResponse.sid,
+            status: adminSmsResponse.status,
+            to: adminSmsResponse.to,
+            from: adminSmsResponse.from,
+            errorCode: adminSmsResponse.errorCode,
+            errorMessage: adminSmsResponse.errorMessage
+          });
+        } catch (adminSmsError) {
+          // Log SMS error with helpful message (same as contact form)
+          if (adminSmsError.code === 21659 || adminSmsError.message?.includes('not a Twilio phone number')) {
+            console.error(`[${environment}] ❌ SMS Error: The phone number used for TWILIO_PHONE_NUMBER is not a valid Twilio number.`);
+            console.error(`[${environment}] Please ensure you are using a phone number you own in your Twilio account.`);
+            console.error(`[${environment}] To get a Twilio number: Go to Twilio Console → Phone Numbers → Manage → Buy a number`);
+            console.error(`[${environment}] Current TWILIO_PHONE_NUMBER:`, process.env.TWILIO_PHONE_NUMBER);
+          } else {
+            console.error(`[${environment}] ❌ Error sending admin SMS:`, adminSmsError.message || adminSmsError);
+            console.error(`[${environment}] SMS Error Details:`, {
+              code: adminSmsError.code,
+              status: adminSmsError.status,
+              moreInfo: adminSmsError.moreInfo
+            });
           }
         }
 
         // Send SMS to customer (if customer phone is available)
         if (finalCustomerPhone) {
           const customerPhone = formatPhoneNumber(finalCustomerPhone);
+          console.log(`[${environment}] 📱 Formatted Customer Phone:`, customerPhone);
+          
           if (twilioPhone && customerPhone && /^\+[1-9]\d{1,14}$/.test(twilioPhone) && /^\+[1-9]\d{1,14}$/.test(customerPhone)) {
             const amountInRupees = amount ? (amount / 100).toFixed(2) : '0.00';
             const customerSmsMessage = `✅ Payment Successful!\n\nDear ${finalCustomerName},\n\nYour payment of ₹${amountInRupees} for ${finalServiceName} has been received.\n\nTransaction ID: ${transactionId || merchantTransactionId}\n\nThank you for your payment!`;
 
             try {
-              await client.messages.create({
+              console.log(`[${environment}] 📱 Attempting to send customer SMS to ${customerPhone}...`);
+              const customerSmsResponse = await client.messages.create({
                 body: customerSmsMessage,
                 from: twilioPhone,
                 to: customerPhone,
               });
               console.log(`[${environment}] ✅ Customer SMS notification sent to ${customerPhone}`);
+              console.log(`[${environment}] 📱 Customer SMS Response:`, {
+                sid: customerSmsResponse.sid,
+                status: customerSmsResponse.status,
+                to: customerSmsResponse.to,
+                from: customerSmsResponse.from,
+                errorCode: customerSmsResponse.errorCode,
+                errorMessage: customerSmsResponse.errorMessage
+              });
             } catch (customerSmsError) {
-              console.error(`[${environment}] ⚠️  Error sending customer SMS:`, customerSmsError.message || customerSmsError);
+              console.error(`[${environment}] ❌ Error sending customer SMS:`, customerSmsError.message || customerSmsError);
               console.error(`[${environment}] Customer SMS Error Details:`, {
                 code: customerSmsError.code,
                 status: customerSmsError.status,
                 moreInfo: customerSmsError.moreInfo
               });
             }
+          } else {
+            console.warn(`[${environment}] ⚠️  Customer SMS skipped: Invalid phone number format. Twilio: ${twilioPhone}, Customer: ${customerPhone}`);
           }
+        } else {
+          console.warn(`[${environment}] ⚠️  Customer SMS skipped: Customer phone not provided`);
         }
       } catch (smsError) {
-        console.error(`[${environment}] ⚠️  Error in SMS notification setup:`, smsError.message || smsError);
+        console.error(`[${environment}] ❌ Error in SMS notification setup:`, smsError.message || smsError);
+        console.error(`[${environment}] SMS Setup Error Stack:`, smsError.stack);
         // Don't fail the webhook if SMS fails
       }
+    } else {
+      console.warn(`[${environment}] ⚠️  SMS notifications skipped: Twilio not fully configured`);
     }
 
     console.log(`[${environment}] ✅ Payment successful: Transaction ${transactionId}, Amount: ₹${(amount / 100).toFixed(2)}, Payment ID: ${paymentId}`);
