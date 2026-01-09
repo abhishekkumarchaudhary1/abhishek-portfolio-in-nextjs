@@ -242,7 +242,7 @@ export async function sendPaymentSuccessEmail(customerEmail, customerName, payme
       if (fs.existsSync(pdfPath)) {
         mailOptions.attachments = [
           {
-            filename: `receipt_${merchantTransactionId}.pdf`,
+            filename: `receipt_${transactionId || merchantTransactionId}.pdf`,
             path: pdfPath,
           },
         ];
@@ -403,7 +403,7 @@ export async function sendAdminPaymentNotification(paymentData) {
       if (fs.existsSync(pdfPath)) {
         mailOptions.attachments = [
           {
-            filename: `receipt_${merchantTransactionId}.pdf`,
+            filename: `receipt_${transactionId || merchantTransactionId}.pdf`,
             path: pdfPath,
           },
         ];
@@ -548,9 +548,9 @@ async function generatePaymentReceiptPDF(receiptData) {
   try {
     const { customerName, transactionId, merchantTransactionId, amount, serviceName, customerMessage, paymentDate } = receiptData;
 
-    // Create temporary file path
+    // Create temporary file path - prioritize transactionId (OMO...) over merchantTransactionId (UUID)
     const tempDir = os.tmpdir();
-    const fileName = `receipt_${merchantTransactionId || transactionId}_${Date.now()}.pdf`;
+    const fileName = `receipt_${transactionId || merchantTransactionId}_${Date.now()}.pdf`;
     const filePath = path.join(tempDir, fileName);
 
     // Create a new PDFDocument
