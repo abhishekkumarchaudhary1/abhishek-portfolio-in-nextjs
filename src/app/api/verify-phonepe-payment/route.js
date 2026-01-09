@@ -564,7 +564,7 @@ export async function POST(request) {
             } else {
               console.warn('⚠️  SMS notifications skipped: Twilio not fully configured');
             }
-          } else if (emailsSent) {
+          } else if (!canSendEmails) {
             console.log('ℹ️  Emails already sent for this payment (skipping to avoid duplicates)');
           } else {
             console.log('⚠️  Cannot send emails - missing customer details:', {
