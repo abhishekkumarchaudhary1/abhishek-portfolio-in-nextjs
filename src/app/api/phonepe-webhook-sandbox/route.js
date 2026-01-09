@@ -398,9 +398,16 @@ async function handlePaymentSuccess(data, environment) {
           if (!phone) return null;
           // Remove all spaces, dashes, and parentheses
           let formatted = phone.replace(/[\s\-\(\)]/g, '');
-          // Ensure it starts with +
+          
+          // If already has country code, just ensure it has +
           if (!formatted.startsWith('+')) {
-            formatted = '+' + formatted;
+            // If it's a 10-digit Indian number, add +91
+            if (formatted.length === 10 && /^[6-9]\d{9}$/.test(formatted)) {
+              formatted = '+91' + formatted;
+            } else {
+              // Otherwise just add +
+              formatted = '+' + formatted;
+            }
           }
           return formatted;
         };
