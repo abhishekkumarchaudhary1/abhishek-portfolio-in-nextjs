@@ -74,234 +74,71 @@ function PaymentSuccessContent() {
     verifyPayment();
   }, [transactionId]);
 
-  const handlePrintReceipt = () => {
-    const printWindow = window.open('', '_blank');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handlePrintReceipt = async () => {
+    if (!paymentData || isDownloading) return;
     
-    // Extract customer details from metaInfo (same as email PDF)
-    const metaInfo = paymentData?.metaInfo || {};
-    const customerName = metaInfo.udf1 || paymentData?.customerName || '';
-    const customerEmail = metaInfo.udf2 || paymentData?.customerEmail || '';
-    const customerPhone = metaInfo.udf3 || paymentData?.customerPhone || '';
-    const serviceName = metaInfo.udf4 || paymentData?.serviceName || '';
+    setIsDownloading(true);
     
-    // Extract customer message from udf5
-    let customerMessage = '';
-    if (metaInfo.udf5) {
-      const udf5Parts = metaInfo.udf5.split('|');
-      if (udf5Parts.length > 1) {
-        try {
-          customerMessage = atob(udf5Parts[1]); // Decode base64
-        } catch (e) {
-          console.error('Error decoding customer message:', e);
+    try {
+      // Extract customer details from metaInfo (same as email PDF)
+      const metaInfo = paymentData?.metaInfo || {};
+      const customerName = metaInfo.udf1 || paymentData?.customerName || '';
+      const serviceName = metaInfo.udf4 || paymentData?.serviceName || '';
+      
+      // Extract customer message from udf5
+      let customerMessage = '';
+      if (metaInfo.udf5) {
+        const udf5Parts = metaInfo.udf5.split('|');
+        if (udf5Parts.length > 1) {
+          try {
+            customerMessage = atob(udf5Parts[1]); // Decode base64
+          } catch (e) {
+            console.error('Error decoding customer message:', e);
+          }
         }
       }
+      
+      // Use the correct transaction ID (OMO... is in orderId or transactionId)
+      const actualTransactionId = paymentData?.orderId || paymentData?.transactionId || paymentData?.merchantTransactionId || '';
+      
+      // Call the API to generate the same PDF as email
+      const response = await fetch('/api/generate-receipt-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerName,
+          transactionId: actualTransactionId,
+          merchantTransactionId: paymentData?.merchantTransactionId,
+          amount: paymentData?.amount,
+          serviceName,
+          customerMessage,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      // Get the PDF blob and download it
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `receipt_${actualTransactionId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading receipt:', error);
+      alert('Failed to download receipt. Please try again.');
+    } finally {
+      setIsDownloading(false);
     }
-    
-    // Use the correct transaction ID (OMO... is in orderId or transactionId)
-    // Priority: orderId (OMO...) > transactionId > merchantTransactionId
-    const actualTransactionId = paymentData?.orderId || paymentData?.transactionId || paymentData?.merchantTransactionId || '';
-    const receiptFilename = `receipt_${actualTransactionId}.pdf`;
-    
-    const receiptContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${receiptFilename}</title>
-          <style>
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none; }
-            }
-            body {
-              font-family: Arial, sans-serif;
-              max-width: 600px;
-              margin: 40px auto;
-              padding: 40px;
-              background: white;
-            }
-            .receipt-header {
-              text-align: center;
-              margin-bottom: 40px;
-            }
-            .receipt-header h1 {
-              color: #667eea;
-              margin: 0 0 10px 0;
-              font-size: 32px;
-              font-weight: bold;
-            }
-            .receipt-header p {
-              color: #666;
-              margin: 5px 0;
-              font-size: 14px;
-            }
-            .divider {
-              height: 2px;
-              background: #667eea;
-              margin: 30px 0;
-            }
-            .divider-light {
-              height: 1px;
-              background: #eee;
-              margin: 20px 0;
-            }
-            .receipt-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 12px 0;
-              border-bottom: 1px solid #f0f0f0;
-            }
-            .receipt-row:last-child {
-              border-bottom: none;
-            }
-            .receipt-label {
-              font-weight: bold;
-              color: #666;
-              min-width: 180px;
-            }
-            .receipt-value {
-              color: #333;
-              text-align: right;
-              word-break: break-all;
-              flex: 1;
-            }
-            .receipt-value-mono {
-              font-family: monospace;
-              font-size: 12px;
-            }
-            .receipt-value-status {
-              color: #10b981;
-              font-weight: bold;
-            }
-            .total-section {
-              margin: 20px 0;
-            }
-            .total-row {
-              display: flex;
-              justify-content: space-between;
-              padding: 15px 0;
-            }
-            .total-label {
-              font-size: 18px;
-              font-weight: bold;
-              color: #667eea;
-            }
-            .total-value {
-              font-size: 18px;
-              font-weight: bold;
-              color: #667eea;
-            }
-            .project-details {
-              margin-top: 30px;
-            }
-            .project-details h2 {
-              color: #667eea;
-              font-size: 16px;
-              font-weight: bold;
-              margin: 0 0 15px 0;
-              padding-bottom: 10px;
-              border-bottom: 2px solid #667eea;
-            }
-            .project-details-content {
-              color: #333;
-              white-space: pre-wrap;
-              word-break: break-word;
-              line-height: 1.6;
-            }
-            .receipt-footer {
-              margin-top: 50px;
-              padding-top: 20px;
-              text-align: center;
-              color: #666;
-              font-size: 11px;
-              line-height: 1.8;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="receipt-header">
-            <h1>PAYMENT RECEIPT</h1>
-            <p>Pre-Registration Payment Confirmation</p>
-          </div>
-          
-          <div class="divider"></div>
-          
-          <div class="receipt-body">
-            ${customerName ? `
-              <div class="receipt-row">
-                <span class="receipt-label">Customer Name:</span>
-                <span class="receipt-value">${customerName}</span>
-              </div>
-            ` : ''}
-            ${serviceName ? `
-              <div class="receipt-row">
-                <span class="receipt-label">Service:</span>
-                <span class="receipt-value">${serviceName}</span>
-              </div>
-            ` : ''}
-            ${actualTransactionId ? `
-              <div class="receipt-row">
-                <span class="receipt-label">Transaction ID:</span>
-                <span class="receipt-value receipt-value-mono">${actualTransactionId}</span>
-              </div>
-            ` : ''}
-            ${paymentData?.merchantTransactionId ? `
-              <div class="receipt-row">
-                <span class="receipt-label">Merchant Order ID:</span>
-                <span class="receipt-value receipt-value-mono">${paymentData.merchantTransactionId}</span>
-              </div>
-            ` : ''}
-            <div class="receipt-row">
-              <span class="receipt-label">Payment Date:</span>
-              <span class="receipt-value">${new Date().toLocaleString('en-IN', { 
-                timeZone: 'Asia/Kolkata',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}</span>
-            </div>
-            <div class="receipt-row">
-              <span class="receipt-label">Payment Status:</span>
-              <span class="receipt-value receipt-value-status">COMPLETED</span>
-            </div>
-          </div>
-
-          <div class="divider-light"></div>
-
-          <div class="total-section">
-            <div class="total-row">
-              <span class="total-label">Total Amount Paid:</span>
-              <span class="total-value">Rs. ${paymentData?.amount ? (paymentData.amount / 100).toFixed(2) : '0.00'}</span>
-            </div>
-          </div>
-
-          ${customerMessage ? `
-            <div class="divider"></div>
-            
-            <div class="project-details">
-              <h2>Project Details</h2>
-              <div class="project-details-content">${customerMessage}</div>
-            </div>
-          ` : ''}
-
-          <div class="receipt-footer">
-            <p>This is a computer-generated receipt.</p>
-            <p>For any queries, please contact: support@abhishek-chaudhary.com</p>
-          </div>
-        </body>
-      </html>
-    `;
-    
-    printWindow.document.write(receiptContent);
-    printWindow.document.close();
-    printWindow.document.title = receiptFilename; // Set document title for print
-    printWindow.focus();
-    
-    // Wait for content to load, then print
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
   };
 
   return (
@@ -358,12 +195,25 @@ function PaymentSuccessContent() {
             <div className="flex gap-3">
               <button
                 onClick={handlePrintReceipt}
-                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                disabled={isDownloading}
+                className="flex-1 bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Print Receipt
+                {isDownloading ? (
+                  <>
+                    <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Receipt
+                  </>
+                )}
               </button>
               <button
                 onClick={() => router.push('/')}
